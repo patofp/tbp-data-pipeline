@@ -1,0 +1,325 @@
+# TBP Pipeline MVP - Data Pipeline Configuration  
+# Contains data sources, processing settings, and secret references
+# Secrets are resolved via template substitution: ${ENV_VAR_NAME}
+
+metadata:
+  version: "0.1.0"
+  description: "Data pipeline configuration with template-based secrets"
+  last_updated: "2025-01-08"
+  config_type: "pipeline"
+
+# Data source configuration
+data_sources:
+  primary: "polygon_s3"           # Use Polygon.io S3 flat files
+  fallback: "polygon_api"         # API only for gaps/recent data
+  
+  # Polygon.io S3 Flat Files configuration
+  s3_config:
+    endpoint: "https://files.polygon.io"
+    bucket_name: "flatfiles"
+    region: "us-east-1"
+    
+    # S3 credentials - Template substitution format
+    credentials:
+      access_key: "${POLYGON_S3_ACCESS_KEY}"    # Template placeholder
+      secret_key: "${POLYGON_S3_SECRET_KEY}"    # Template placeholder
+      
+    # File path structure for different data types
+    path_structure:
+      day_aggs: "us_stocks_sip/day_aggs_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
+      minute_aggs: "us_stocks_sip/minute_aggs_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
+      trades: "us_stocks_sip/trades_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
+      quotes: "us_stocks_sip/quotes_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
+    
+    # File format details
+    file_format: "csv"            # CSV files (compressed with gzip)
+    compression: "gzip"           # .gz compression
+    encoding: "utf-8"
+    header_row: true              # First row contains column names
+    
+    # Connection settings
+    connect_timeout_seconds: 30
+    read_timeout_seconds: 300
+    max_retries: 3
+    multipart_threshold_mb: 64    # Use multipart for files > 64MB
+
+  # Fallback API configuration (for gaps/recent data only)
+  api_config:
+    base_url: "https://api.polygon.io"
+    
+    # API credentials - Template substitution format
+    credentials:
+      api_key: "${POLYGON_API_KEY}"             # Template placeholder
+      
+    # Rate limiting (free tier)
+    rate_limit:
+      calls_per_minute: 5                       # Polygon.io free tier limit
+      calls_per_day: 1000                       # Daily limit
+      batch_size: 1000                          # Records per API call
+      
+    # Retry settings
+    max_retries: 3
+    retry_delay_seconds: 12                     # Wait between retries (12s = 5 calls/min)
+    backoff_multiplier: 2                       # Exponential backoff
+
+# Data types and timeframes to download
+data_types:
+  # Daily aggregates (enabled for MVP)
+  day_aggs:
+    enabled: true
+    s3_path: "day_aggs_v1"
+    timeframe: "1d"
+    priority: 1
+    description: "Daily OHLCV aggregates"
+    
+  # Minute aggregates (disabled for MVP)
+  minute_aggs:
+    enabled: false
+    s3_path: "minute_aggs_v1" 
+    timeframe: "1m"
+    priority: 2
+    description: "Minute-level OHLCV aggregates"
+    
+  # Trades (disabled for MVP)
+  trades:
+    enabled: false
+    s3_path: "trades_v1"
+    timeframe: "tick"
+    priority: 3
+    description: "Individual trade records"
+    
+  # Quotes (disabled for MVP)  
+  quotes:
+    enabled: false
+    s3_path: "quotes_v1"
+    timeframe: "tick" 
+    priority: 4
+    description: "Bid/ask quote updates"
+
+# Date range for historical data
+date_range:
+  start_date: "2020-01-01"        # 5 years of history
+  end_date: "2024-12-31"          # Through end of 2024
+  
+  # Data availability timing
+  data_lag_hours: 11              # Data available by 11 AM ET next trading day
+  cutoff_time: "11:00"            # ET - don't download before this time
+  
+  # Processing windows
+  batch_size_days: 30             # Process 30 days at a time
+  max_backfill_days: 1825         # Max 5 years (5 * 365)
+
+# Database configuration
+database:
+  # Database connection - Template substitution format
+  connection:
+    host: "${DB_HOST}"                        # Template placeholder
+    port: "${DB_PORT}"                        # Template placeholder  
+    database: "${DB_NAME}"                    # Template placeholder
+    username: "${DB_USER}"                    # Template placeholder
+    password: "${DB_PASSWORD}"                # Template placeholder
+    
+  # Connection pool settings
+  pool:
+    min_connections: 1
+    max_connections: 10
+    connection_timeout_seconds: 30
+    idle_timeout_seconds: 300
+    
+  # Database schema and tables
+  schema: "trading"                           # Schema name
+  tables:
+    market_data_raw: "market_data_raw"        # Main data table
+    ingestion_log: "ingestion_log"            # Processing log table
+    data_quality: "data_quality_metrics"      # Quality metrics table
+    
+  # Insert settings
+  batch_insert_size: 10000                   # Records per batch insert
+  upsert_on_conflict: true                   # Handle duplicate timestamps
+  
+  # CSV column mapping (from Polygon.io to database)
+  column_mapping:
+    ticker: "ticker"                          # Stock symbol
+    volume: "volume"                          # Share volume
+    open: "open"                              # Opening price
+    close: "close"                            # Closing price
+    high: "high"                              # High price
+    low: "low"                                # Low price
+    window_start: "timestamp"                 # Timestamp (convert from nanoseconds)
+    transactions: "transactions"              # Number of transactions
+    vwap: "vwap"                             # Volume weighted average price
+
+# Data quality validation
+quality:
+  # OHLC validation rules
+  ohlc_validation:
+    enabled: true
+    rules:
+      - "high >= low"                         # High must be >= low
+      - "high >= open"                        # High must be >= open
+      - "high >= close"                       # High must be >= close
+      - "low <= open"                         # Low must be <= open  
+      - "low <= close"                        # Low must be <= close
+      - "volume >= 0"                         # Volume must be non-negative
+      - "open > 0"                            # Open must be positive
+      - "close > 0"                           # Close must be positive
+      
+  # Outlier detection
+  outlier_detection:
+    enabled: true
+    max_price_change_pct: 50                  # 50% max daily price change
+    max_volume_spike: 10                      # 10x average volume spike
+    min_price: 0.01                           # Minimum valid price ($0.01)
+    max_price: 10000                          # Maximum valid price ($10,000)
+    
+  # Completeness checks
+  completeness:
+    min_coverage_pct: 95                      # 95% minimum data coverage
+    max_gap_days: 7                           # Max 7 consecutive missing days
+    required_fields: ["ticker", "timestamp", "open", "high", "low", "close", "volume"]
+    
+  # Actions on quality issues
+  quality_actions:
+    invalid_ohlc: "drop"                      # Drop invalid OHLC records
+    outliers: "flag"                          # Flag but keep outliers
+    missing_data: "log"                       # Log missing data gaps
+
+# Processing configuration
+processing:
+  # Parallel processing
+  parallel:
+    max_workers: 3                            # Max concurrent downloads
+    chunk_size_days: 30                       # Process 30 days at a time
+    enable_multiprocessing: true              # Use multiprocessing
+    
+  # Retry logic
+  retry:
+    max_attempts: 3                           # Max retry attempts
+    base_delay_seconds: 5                     # Base retry delay
+    exponential_backoff: true                 # Use exponential backoff
+    max_delay_seconds: 60                     # Max retry delay
+    
+  # Memory management
+  memory:
+    max_memory_mb: 1024                       # Max 1GB memory usage
+    chunk_processing: true                    # Process large files in chunks
+    cleanup_temp_files: true                  # Clean up temporary files
+    
+  # Local caching
+  cache:
+    enabled: true                             # Enable local file caching
+    directory: "data/cache"                   # Cache directory
+    retention_days: 7                         # Keep cache for 1 week
+    max_size_gb: 5                            # Max 5GB cache size
+    compress_cache: true                      # Compress cached files
+
+# Logging configuration
+logging:
+  # Log levels
+  level: "${LOG_LEVEL:-INFO}"                 # Default to INFO, override with env var
+  
+  # Log destinations
+  console:
+    enabled: true
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    
+  file:
+    enabled: true
+    path: "logs/pipeline.log"
+    max_size_mb: 100                          # Max log file size
+    backup_count: 5                           # Keep 5 backup files
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
+    
+  # Performance logging
+  performance:
+    enabled: true
+    log_slow_queries: true
+    slow_query_threshold_seconds: 10
+    log_memory_usage: true
+
+# Monitoring and alerting
+monitoring:
+  # Metrics collection
+  metrics:
+    enabled: true
+    export_interval_seconds: 60               # Export metrics every minute
+    
+  # Health checks
+  health_checks:
+    enabled: true
+    check_interval_seconds: 300               # Check every 5 minutes
+    
+    checks:
+      - name: "database_connection"
+        timeout_seconds: 10
+        
+      - name: "s3_connectivity" 
+        timeout_seconds: 30
+        
+      - name: "disk_space"
+        threshold_gb: 1                       # Alert if < 1GB free
+        
+      - name: "memory_usage"
+        threshold_pct: 90                     # Alert if > 90% memory used
+        
+  # Alerting (basic for MVP)
+  alerts:
+    enabled: false                            # Disable for MVP
+    # Future: email, slack, webhook notifications
+
+# Environment-specific overrides
+environments:
+  development:
+    logging:
+      level: "DEBUG"
+    processing:
+      parallel:
+        max_workers: 1                        # Single threaded for debugging
+    cache:
+      retention_days: 1                       # Short cache in dev
+      
+  production:
+    logging:
+      level: "INFO"
+    processing:
+      parallel:
+        max_workers: 3                        # Full parallelism
+    cache:
+      retention_days: 7                       # Longer cache in prod
+    monitoring:
+      alerts:
+        enabled: true                         # Enable alerts in production
+
+# Template substitution notes
+# ===========================
+# This configuration uses template substitution for secrets and environment-specific values.
+# Format: ${ENV_VAR_NAME} or ${ENV_VAR_NAME:-default_value}
+#
+# Required environment variables:
+# - POLYGON_S3_ACCESS_KEY: S3 access key from Polygon.io
+# - POLYGON_S3_SECRET_KEY: S3 secret key from Polygon.io  
+# - POLYGON_API_KEY: API key from Polygon.io (optional)
+# - DB_HOST: Database host (e.g., 192.168.1.11)
+# - DB_PORT: Database port (e.g., 5432)
+# - DB_NAME: Database name (e.g., trading_tbp)
+# - DB_USER: Database username (e.g., postgres)
+# - DB_PASSWORD: Database password
+#
+# Optional environment variables:
+# - LOG_LEVEL: Logging level (default: INFO)
+# - ENVIRONMENT: Environment name (development/production)
+#
+# Template substitution is handled by the ConfigLoader class:
+# ```python
+# from string import Template
+# 
+# def load_config(config_path):
+#     with open(config_path) as f:
+#         content = f.read()
+#     
+#     # Substitute environment variables
+#     template = Template(content)
+#     substituted = template.substitute(os.environ)
+#     
+#     return yaml.safe_load(substituted)
+# ```
