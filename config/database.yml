@@ -1,0 +1,44 @@
+metadata:
+  version: "0.1.0"
+  description: "Data pipeline configuration for TimescaleDB"
+  last_updated: "2025-01-08"
+
+# Database configuration
+database:
+  # Database connection - Template substitution format
+  connection:
+    host: "${DB_HOST}"                        # Template placeholder
+    port: "${DB_PORT}"                        # Template placeholder  
+    database: "${DB_NAME}"                    # Template placeholder
+    username: "${DB_USER}"                    # Template placeholder
+    password: "${DB_PASSWORD}"                # Template placeholder
+    
+  # Connection pool settings
+  pool:
+    min_connections: 1
+    max_connections: 10
+    connection_timeout_seconds: 30
+    idle_timeout_seconds: 300
+    
+  # Database schema and tables
+  schema: "trading"                           # Schema name
+  tables:
+    market_data_raw: "market_data_raw"        # Main data table
+    ingestion_log: "ingestion_log"            # Processing log table
+    data_quality: "data_quality_metrics"      # Quality metrics table
+    
+  # Insert settings
+  batch_insert_size: 10000                   # Records per batch insert
+  upsert_on_conflict: true                   # Handle duplicate timestamps
+  
+  # CSV column mapping (from Polygon.io to database)
+  column_mapping:
+    ticker: "ticker"                          # Stock symbol
+    volume: "volume"                          # Share volume
+    open: "open"                              # Opening price
+    close: "close"                            # Closing price
+    high: "high"                              # High price
+    low: "low"                                # Low price
+    window_start: "timestamp"                 # Timestamp (convert from nanoseconds)
+    transactions: "transactions"              # Number of transactions
+    vwap: "vwap"  

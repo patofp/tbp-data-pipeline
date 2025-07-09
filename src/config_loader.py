@@ -119,32 +119,156 @@ class ConfigLoader:
     """Load and validate configuration from YAML files with template substitution."""
 
     def __init__(self, config_dir: str = "config"):
+        self.config_dir = Path(config_dir)
+        self.configs = {}
+        
+        # Load all YAML/YML files in the config directory
         for file in os.listdir(config_dir):
-            if file.endswith('.yaml'):
+            if file.endswith(('.yaml', '.yml')):
                 file_path = Path(config_dir) / file
-                setattr(self, file.stem,
-                        self._load_yaml_with_substitution(file_path))
-                
+                config_name = file.replace('.yml', '').replace('.yaml', '')
+                self.configs[config_name] = self._load_yaml_with_substitution(file_path)
+                setattr(self, config_name, self.configs[config_name])
 
     def get_all_tickers(self) -> List[TickerConfig]:
         """Get all configured tickers."""
-        pass
+        tickers = []
+        if 'instruments' in self.configs:
+            for ticker_data in self.configs['instruments'].get('tickers', []):
+                ticker = TickerConfig(
+                    symbol=ticker_data['symbol'],
+                    name=ticker_data['name'],
+                    sector=ticker_data['sector'],
+                    asset_class=ticker_data['asset_class'],
+                    priority=ticker_data['priority']
+                )
+                tickers.append(ticker)
+        return tickers
 
     def get_ticker_groups(self) -> Dict[str, List[str]]:
         """Get ticker groupings."""
-        pass
+        groups = {}
+        if 'instruments' in self.configs:
+            groups_data = self.configs['instruments'].get('ticker_groups', {})
+            for group_name, group_info in groups_data.items():
+                groups[group_name] = group_info.get('symbols', [])
+        return groups
 
     def get_s3_config(self) -> S3Config:
         """Get S3 configuration with resolved credentials."""
-        pass
+        if 's3' not in self.configs:
+            raise ValueError("S3 configuration not found")
+            
+        s3_data = self.configs['s3']['s3_config']
+        
+        # Create credentials object
+        credentials = S3Credentials(
+            access_key=s3_data['credentials']['access_key'],
+            secret_key=s3_data['credentials']['secret_key']
+        )
+        
+        # Create path structure object
+        path_structure = S3PathStructure(
+            day_aggs=s3_data['path_structure']['day_aggs'],
+            minute_aggs=s3_data['path_structure']['minute_aggs'],
+            trades=s3_data['path_structure']['trades'],
+            quotes=s3_data['path_structure']['quotes']
+        )
+        
+        # Create S3 config object
+        return S3Config(
+            endpoint=s3_data['endpoint'],
+            bucket_name=s3_data['bucket_name'],
+            region=s3_data['region'],
+            credentials=credentials,
+            path_structure=path_structure,
+            file_format=s3_data['file_format'],
+            compression=s3_data['compression'],
+            encoding=s3_data['encoding'],
+            header_row=s3_data['header_row'],
+            connect_timeout_seconds=s3_data['connect_timeout_seconds'],
+            read_timeout_seconds=s3_data['read_timeout_seconds'],
+            max_retries=s3_data['max_retries'],
+            multipart_threshold_mb=s3_data['multipart_threshold_mb']
+        )
 
     def get_database_config(self) -> DatabaseConfig:
         """Get database configuration with resolved credentials."""
-        pass
+        if 'database' not in self.configs:
+            raise ValueError("Database configuration not found")
+            
+        db_data = self.configs['database']['database']
+        
+        # Create connection object
+        connection = DatabaseConnection(
+            host=db_data['connection']['host'],
+            port=db_data['connection']['port'],
+            database=db_data['connection']['database'],
+            username=db_data['connection']['username'],
+            password=db_data['connection']['password']
+        )
+        
+        # Create pool object
+        pool = DatabasePool(
+            min_connection=db_data['pool']['min_connections'],
+            max_connection=db_data['pool']['max_connections'],
+            connection_timeout_seconds=db_data['pool']['connection_timeout_seconds'],
+            idle_timeout_seconds=db_data['pool']['idle_timeout_seconds']
+        )
+        
+        # Create tables object
+        tables = DatabaseTables(
+            market_data_raw=db_data['tables']['market_data_raw'],
+            ingestion_log=db_data['tables']['ingestion_log'],
+            data_quality=db_data['tables']['data_quality']
+        )
+        
+        # Create column mapping object
+        column_mapping = DatabaseColumnMapping(
+            ticker=db_data['column_mapping']['ticker'],
+            volume=db_data['column_mapping']['volume'],
+            open=db_data['column_mapping']['open'],
+            close=db_data['column_mapping']['close'],
+            high=db_data['column_mapping']['high'],
+            low=db_data['column_mapping']['low'],
+            window_start=db_data['column_mapping']['window_start'],
+            transactions=db_data['column_mapping']['transactions'],
+            vwap=db_data['column_mapping']['vwap']
+        )
+        
+        # Create database config object
+        return DatabaseConfig(
+            connection=connection,
+            pool=pool,
+            schema=db_data['schema'],
+            tables=tables,
+            batch_insert_size=db_data['batch_insert_size'],
+            upsert_on_conflict=db_data['upsert_on_conflict'],
+            column_mapping=column_mapping
+        )
 
     def validate_environment(self) -> bool:
         """Validate required environment variables are set."""
-        pass
+        required_vars = [
+            'POLYGON_S3_ACCESS_KEY',
+            'POLYGON_S3_SECRET_KEY',
+            'POLYGON_API_KEY',
+            'DB_HOST',
+            'DB_PORT',
+            'DB_NAME',
+            'DB_USER',
+            'DB_PASSWORD',
+            'LOG_LEVEL'
+        ]
+        
+        missing_vars = self._validate_required_vars(required_vars)
+        
+        if missing_vars:
+            logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+            return False
+            
+        logger.info("All required environment variables are set")
+        return True
 
     def _load_yaml_with_substitution(self, file_path: Path) -> Dict[str, Any]:
         """Load YAML file with environment variable substitution."""
@@ -156,14 +280,26 @@ class ConfigLoader:
 
         # Find all ${VARIABLE} patterns and replace with env var values
         def replace_env_var(match):
-            var_name = match.group(1)
-            value = os.environ.get(var_name)
-            if value is None:
-                logger.warning(
-                    f"Environment variable '{var_name}' not found, keeping placeholder")
-                # Keep the original ${VARIABLE} if not found
-                return match.group(0)
-            return value
+            var_expr = match.group(1)
+            
+            # Check if there's a default value (e.g., ${VAR:-default})
+            if ':-' in var_expr:
+                var_name, default_value = var_expr.split(':-', 1)
+                value = os.environ.get(var_name)
+                if value is None:
+                    logger.debug(f"Using default value '{default_value}' for '{var_name}'")
+                    return default_value
+                return value
+            else:
+                # No default value specified
+                var_name = var_expr
+                value = os.environ.get(var_name)
+                if value is None:
+                    logger.warning(
+                        f"Environment variable '{var_name}' not found, keeping placeholder")
+                    # Keep the original ${VARIABLE} if not found
+                    return match.group(0)
+                return value
 
         # Replace all ${VARIABLE} patterns with environment variable values
         pattern = r'\$\{([^}]+)\}'
@@ -176,4 +312,8 @@ class ConfigLoader:
 
     def _validate_required_vars(self, required_vars: List[str]) -> List[str]:
         """Validate required environment variables and return missing ones."""
-        pass
+        missing_vars = []
+        for var in required_vars:
+            if var not in os.environ or not os.environ[var]:
+                missing_vars.append(var)
+        return missing_vars

@@ -44,8 +44,10 @@
 ### Configuration Files Completed
 ```
 config/
-├── instruments.yaml     ✅ DONE - 12 tickers, metadata, groupings
-└── pipeline.yaml        ✅ DONE - S3 config, DB config, secrets templates
+├── instruments.yml      ✅ DONE - 12 tickers, metadata, groupings
+├── pipeline.yml         ✅ DONE - Processing settings, secrets templates
+├── s3.yml              ✅ DONE - S3 configuration separated
+└── database.yml        ✅ DONE - Database configuration separated
 
 scripts/
 └── set-env-vars.sh      ✅ DONE - Simple environment loader
@@ -54,30 +56,32 @@ scripts/
 .gitignore               ✅ DONE - Updated with secrets protection
 ```
 
-## 🔄 Current Status: Configuration → Implementation
+## 🔄 Current Status: Implementation Phase
 
 ### Currently Working On
-**Next Task**: Implement ConfigLoader class in `src/config_loader.py`
+**Next Task**: Implement S3Client class in `src/s3_client.py`
 
 **Requirements**:
-- Load both instruments.yaml and pipeline.yaml
-- Handle template substitution for `${ENV_VAR_NAME}` placeholders
-- Validate required environment variables
-- Return clean configuration objects
-- Support multiple configuration access patterns
+- Connect to Polygon.io S3 using boto3
+- Handle path generation for daily files
+- Download and parse CSV files
+- Implement retry logic
+- Support incremental downloads
 
 ## 📋 TODO: Implementation Tasks
 
 ### Phase 3: Core Implementation (Current)
 
-#### 🎯 NEXT: ConfigLoader Implementation
-- [ ] **Create src/config_loader.py**
-  - [ ] InstrumentsConfig class for ticker management
-  - [ ] PipelineConfig class for data pipeline settings  
-  - [ ] Template substitution engine using string.Template
-  - [ ] Environment variable validation
-  - [ ] Configuration access methods (get_tickers, get_s3_config, etc.)
-  - [ ] Error handling for missing files/variables
+#### ✅ DONE: ConfigLoader Implementation
+- [x] **Create src/config_loader.py**
+  - [x] TickerConfig dataclass for ticker management
+  - [x] S3Config, DatabaseConfig dataclasses for settings  
+  - [x] Template substitution engine using regex for ${VAR} and ${VAR:-default}
+  - [x] Environment variable validation
+  - [x] Configuration access methods (get_all_tickers, get_s3_config, get_database_config)
+  - [x] Error handling for missing files/variables
+  - [x] Support for .yml and .yaml extensions
+  - [x] Unit tests created and passing
 
 #### S3 Client Implementation  
 - [ ] **Create src/s3_client.py**
@@ -161,19 +165,23 @@ scripts/
 ```
 tbp-data-pipeline/
 ├── src/
-│   ├── config_loader.py     🎯 NEXT - Configuration management
-│   ├── s3_client.py         📋 TODO - Polygon.io S3 integration
+│   ├── config_loader.py     ✅ DONE - Configuration management with template substitution
+│   ├── s3_client.py         🎯 NEXT - Polygon.io S3 integration
 │   ├── database.py          📋 TODO - TimescaleDB operations
 │   ├── downloader.py        📋 TODO - Main orchestration logic
 │   └── utils.py             📋 TODO - Common utilities
 ├── config/
-│   ├── instruments.yaml     ✅ DONE - Ticker definitions
-│   └── pipeline.yaml        ✅ DONE - Pipeline configuration
+│   ├── instruments.yml      ✅ DONE - Ticker definitions
+│   ├── pipeline.yml         ✅ DONE - Pipeline configuration
+│   ├── s3.yml              ✅ DONE - S3 configuration
+│   └── database.yml        ✅ DONE - Database configuration
 ├── scripts/
 │   ├── set-env-vars.sh      ✅ DONE - Environment loader
 │   └── download_historical.py 📋 TODO - Main execution script
+├── test/
+│   └── test_config_loader.py ✅ DONE - ConfigLoader tests
 └── tests/
-    └── test_*.py            📋 TODO - Test suite
+    └── test_*.py            📋 TODO - Additional test suite
 ```
 
 ### Technical Specifications
@@ -241,7 +249,7 @@ ENVIRONMENT=development
 ## 🎯 Success Criteria
 
 ### MVP Definition of Done
-- [ ] **Configuration System**: Load YAML configs with template substitution
+- [x] **Configuration System**: Load YAML configs with template substitution
 - [ ] **S3 Integration**: Download daily CSV files from Polygon.io S3
 - [ ] **Database Integration**: Store data in TimescaleDB with proper schema
 - [ ] **Incremental Logic**: Auto-resilient daily updates without trading calendar
@@ -306,7 +314,7 @@ The project is currently transitioning from configuration design to implementati
 
 ---
 
-**Last Updated**: January 8, 2025
-**Current Phase**: Configuration → Implementation  
-**Next Milestone**: Working ConfigLoader with template substitution
-**Overall Progress**: ~25% complete (configuration design done)
+**Last Updated**: January 9, 2025
+**Current Phase**: Implementation - Core Components
+**Next Milestone**: Working S3Client for data downloads
+**Overall Progress**: ~35% complete (configuration done, ConfigLoader implemented)

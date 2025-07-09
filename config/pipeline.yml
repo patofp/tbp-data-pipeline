@@ -1,6 +1,5 @@
 # TBP Pipeline MVP - Data Pipeline Configuration  
 # Contains data sources, processing settings, and secret references
-# Secrets are resolved via template substitution: ${ENV_VAR_NAME}
 
 metadata:
   version: "0.1.0"
@@ -13,36 +12,6 @@ data_sources:
   primary: "polygon_s3"           # Use Polygon.io S3 flat files
   fallback: "polygon_api"         # API only for gaps/recent data
   
-  # Polygon.io S3 Flat Files configuration
-  s3_config:
-    endpoint: "https://files.polygon.io"
-    bucket_name: "flatfiles"
-    region: "us-east-1"
-    
-    # S3 credentials - Template substitution format
-    credentials:
-      access_key: "${POLYGON_S3_ACCESS_KEY}"    # Template placeholder
-      secret_key: "${POLYGON_S3_SECRET_KEY}"    # Template placeholder
-      
-    # File path structure for different data types
-    path_structure:
-      day_aggs: "us_stocks_sip/day_aggs_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
-      minute_aggs: "us_stocks_sip/minute_aggs_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
-      trades: "us_stocks_sip/trades_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
-      quotes: "us_stocks_sip/quotes_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
-    
-    # File format details
-    file_format: "csv"            # CSV files (compressed with gzip)
-    compression: "gzip"           # .gz compression
-    encoding: "utf-8"
-    header_row: true              # First row contains column names
-    
-    # Connection settings
-    connect_timeout_seconds: 30
-    read_timeout_seconds: 300
-    max_retries: 3
-    multipart_threshold_mb: 64    # Use multipart for files > 64MB
-
   # Fallback API configuration (for gaps/recent data only)
   api_config:
     base_url: "https://api.polygon.io"
@@ -108,46 +77,6 @@ date_range:
   # Processing windows
   batch_size_days: 30             # Process 30 days at a time
   max_backfill_days: 1825         # Max 5 years (5 * 365)
-
-# Database configuration
-database:
-  # Database connection - Template substitution format
-  connection:
-    host: "${DB_HOST}"                        # Template placeholder
-    port: "${DB_PORT}"                        # Template placeholder  
-    database: "${DB_NAME}"                    # Template placeholder
-    username: "${DB_USER}"                    # Template placeholder
-    password: "${DB_PASSWORD}"                # Template placeholder
-    
-  # Connection pool settings
-  pool:
-    min_connections: 1
-    max_connections: 10
-    connection_timeout_seconds: 30
-    idle_timeout_seconds: 300
-    
-  # Database schema and tables
-  schema: "trading"                           # Schema name
-  tables:
-    market_data_raw: "market_data_raw"        # Main data table
-    ingestion_log: "ingestion_log"            # Processing log table
-    data_quality: "data_quality_metrics"      # Quality metrics table
-    
-  # Insert settings
-  batch_insert_size: 10000                   # Records per batch insert
-  upsert_on_conflict: true                   # Handle duplicate timestamps
-  
-  # CSV column mapping (from Polygon.io to database)
-  column_mapping:
-    ticker: "ticker"                          # Stock symbol
-    volume: "volume"                          # Share volume
-    open: "open"                              # Opening price
-    close: "close"                            # Closing price
-    high: "high"                              # High price
-    low: "low"                                # Low price
-    window_start: "timestamp"                 # Timestamp (convert from nanoseconds)
-    transactions: "transactions"              # Number of transactions
-    vwap: "vwap"                             # Volume weighted average price
 
 # Data quality validation
 quality:
@@ -289,37 +218,3 @@ environments:
     monitoring:
       alerts:
         enabled: true                         # Enable alerts in production
-
-# Template substitution notes
-# ===========================
-# This configuration uses template substitution for secrets and environment-specific values.
-# Format: ${ENV_VAR_NAME} or ${ENV_VAR_NAME:-default_value}
-#
-# Required environment variables:
-# - POLYGON_S3_ACCESS_KEY: S3 access key from Polygon.io
-# - POLYGON_S3_SECRET_KEY: S3 secret key from Polygon.io  
-# - POLYGON_API_KEY: API key from Polygon.io (optional)
-# - DB_HOST: Database host (e.g., 192.168.1.11)
-# - DB_PORT: Database port (e.g., 5432)
-# - DB_NAME: Database name (e.g., trading_tbp)
-# - DB_USER: Database username (e.g., postgres)
-# - DB_PASSWORD: Database password
-#
-# Optional environment variables:
-# - LOG_LEVEL: Logging level (default: INFO)
-# - ENVIRONMENT: Environment name (development/production)
-#
-# Template substitution is handled by the ConfigLoader class:
-# ```python
-# from string import Template
-# 
-# def load_config(config_path):
-#     with open(config_path) as f:
-#         content = f.read()
-#     
-#     # Substitute environment variables
-#     template = Template(content)
-#     substituted = template.substitute(os.environ)
-#     
-#     return yaml.safe_load(substituted)
-# ```

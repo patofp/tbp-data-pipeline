@@ -1,0 +1,33 @@
+metadata:
+  version: "0.1.0"
+  description: "Data pipeline configuration for Polygon.io US Stocks SIP data"
+  last_updated: "2025-01-08"
+
+s3_config:
+  endpoint: "https://files.polygon.io"
+  bucket_name: "flatfiles"
+  region: "us-east-1"
+  
+  # S3 credentials - Template substitution format
+  credentials:
+    access_key: "${POLYGON_S3_ACCESS_KEY}"    # Template placeholder
+    secret_key: "${POLYGON_S3_SECRET_KEY}"    # Template placeholder
+    
+  # File path structure for different data types
+  path_structure:
+    day_aggs: "us_stocks_sip/day_aggs_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
+    minute_aggs: "us_stocks_sip/minute_aggs_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
+    trades: "us_stocks_sip/trades_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
+    quotes: "us_stocks_sip/quotes_v1/{year}/{month:02d}/{year}-{month:02d}-{day:02d}.csv.gz"
+  
+  # File format details
+  file_format: "csv"            # CSV files (compressed with gzip)
+  compression: "gzip"           # .gz compression
+  encoding: "utf-8"
+  header_row: true              # First row contains column names
+  
+  # Connection settings
+  connect_timeout_seconds: 30
+  read_timeout_seconds: 300
+  max_retries: 3
+  multipart_threshold_mb: 64    # Use multipart for files > 64MB

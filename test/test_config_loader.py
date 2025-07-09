@@ -4,16 +4,15 @@
 import os
 import sys
 from pathlib import Path
+import pytest
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from config_loader import ConfigLoader
 
-def test_config_loader():
-    """Test the ConfigLoader with sample environment variables"""
-    
-    # Set some test environment variables
+@pytest.fixture(autouse=True)
+def set_env_vars(monkeypatch):
     test_env_vars = {
         'POLYGON_S3_ACCESS_KEY': 'test_s3_access_key',
         'POLYGON_S3_SECRET_KEY': 'test_s3_secret_key',
@@ -25,61 +24,52 @@ def test_config_loader():
         'DB_PASSWORD': 'test_password',
         'LOG_LEVEL': 'DEBUG'
     }
-    
-    # Set environment variables
     for key, value in test_env_vars.items():
-        os.environ[key] = value
-    
-    # Create config loader
-    print("Loading configuration...")
-    config = ConfigLoader()
-    
-    # Test environment validation
-    print("\n1. Testing environment validation:")
-    is_valid = config.validate_environment()
-    print(f"   Environment valid: {is_valid}")
-    
-    # Test loading tickers
-    print("\n2. Testing ticker loading:")
-    tickers = config.get_all_tickers()
-    print(f"   Loaded {len(tickers)} tickers")
-    if tickers:
-        print(f"   First ticker: {tickers[0]}")
-    
-    # Test ticker groups
-    print("\n3. Testing ticker groups:")
-    groups = config.get_ticker_groups()
-    for group_name, symbols in groups.items():
-        print(f"   {group_name}: {len(symbols)} symbols")
-    
-    # Test S3 config
-    print("\n4. Testing S3 configuration:")
-    s3_config = config.get_s3_config()
-    print(f"   Endpoint: {s3_config.endpoint}")
-    print(f"   Bucket: {s3_config.bucket_name}")
-    print(f"   Access Key: {s3_config.credentials.access_key}")
-    print(f"   File Format: {s3_config.file_format}")
-    
-    # Test database config
-    print("\n5. Testing database configuration:")
-    db_config = config.get_database_config()
-    print(f"   Host: {db_config.connection.host}")
-    print(f"   Port: {db_config.connection.port}")
-    print(f"   Database: {db_config.connection.database}")
-    print(f"   Schema: {db_config.schema}")
-    print(f"   Main table: {db_config.tables.market_data_raw}")
-    
-    # Test with missing environment variable
-    print("\n6. Testing with missing environment variable:")
-    del os.environ['DB_PASSWORD']
-    config2 = ConfigLoader()
-    is_valid2 = config2.validate_environment()
-    print(f"   Environment valid (missing DB_PASSWORD): {is_valid2}")
-    
-    # Restore for cleanup
-    os.environ['DB_PASSWORD'] = test_env_vars['DB_PASSWORD']
-    
-    print("\nAll tests completed!")
+        monkeypatch.setenv(key, value)
+    yield
+    # Cleanup is automatic with monkeypatch
 
-if __name__ == "__main__":
-    test_config_loader()
+def test_environment_validation():
+    config = ConfigLoader()
+    assert config.validate_environment() is True
+    print("✅ test_environment_validation passed")
+
+def test_loading_tickers():
+    config = ConfigLoader()
+    tickers = config.get_all_tickers()
+    assert isinstance(tickers, list)
+    assert len(tickers) == 12
+    assert tickers[0].symbol == "AAPL"
+    print("✅ test_loading_tickers passed")
+
+def test_ticker_groups():
+    config = ConfigLoader()
+    groups = config.get_ticker_groups()
+    assert "high_priority" in groups
+    assert len(groups["high_priority"]) == 4
+    print("✅ test_ticker_groups passed")
+
+def test_s3_config():
+    config = ConfigLoader()
+    s3_config = config.get_s3_config()
+    assert s3_config.endpoint == "https://files.polygon.io"
+    assert s3_config.bucket_name == "flatfiles"
+    assert s3_config.credentials.access_key == "test_s3_access_key"
+    assert s3_config.file_format == "csv"
+    print("✅ test_s3_config passed")
+
+def test_database_config():
+    config = ConfigLoader()
+    db_config = config.get_database_config()
+    assert db_config.connection.host == "192.168.1.11"
+    assert db_config.connection.port == "5432"
+    assert db_config.connection.database == "trading_tbp"
+    assert db_config.schema == "trading"
+    assert db_config.tables.market_data_raw == "market_data_raw"
+    print("✅ test_database_config passed")
+
+def test_missing_env_var(monkeypatch):
+    monkeypatch.delenv("DB_PASSWORD", raising=False)
+    config = ConfigLoader()
+    assert config.validate_environment() is False
+    print("✅ test_missing_env_var passed")
