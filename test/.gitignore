@@ -1,0 +1,1 @@
+# Add test fixtures to gitignore (large files)\ntest/fixtures/raw/\n\n# Keep small test files\n!test/fixtures/*.csv.gz\n\n# LocalStack data\n.localstack/\n\n# Test environment\ntest/.env.test
