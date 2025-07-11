@@ -35,6 +35,16 @@ class DataType(Enum):
     MINUTE_AGGS = "minute_aggs"
     TRADES = "trades"
     QUOTES = "quotes"
+    
+    def get_timeframe(self) -> str:
+        """Get the timeframe string for this data type."""
+        timeframe_mapping = {
+            DataType.DAY_AGGS: "1d",
+            DataType.MINUTE_AGGS: "1m",
+            DataType.TRADES: "tick",
+            DataType.QUOTES: "tick"
+        }
+        return timeframe_mapping[self]
 
 
 class PolygonS3Client:
@@ -192,7 +202,7 @@ class PolygonS3Client:
                     content = s3_object["Body"].read().decode("utf-8")
 
                 # Parse CSV content with quality validation
-                df = self._parse_csv_data(content, ticker, date)
+                df = self._parse_csv_data(content, ticker, date, data_type)
                 if df.empty:
                     self.logger.warning(
                         f"No data found for {ticker} on {date} after parsing"
@@ -334,7 +344,7 @@ class PolygonS3Client:
         return s3_path
 
     def _parse_csv_data(
-        self, csv_content: str, ticker: str, date: date
+        self, csv_content: str, ticker: str, date: date, data_type: DataType
     ) -> pd.DataFrame:
         """Parse CSV content and filter for specific ticker with quality validation"""
 
@@ -364,6 +374,9 @@ class PolygonS3Client:
         for col in numeric_cols:
             if col in df_filtered.columns:
                 df_filtered[col] = pd.to_numeric(df_filtered[col], errors="coerce")
+        
+        # Add timeframe column based on data_type
+        df_filtered["timeframe"] = data_type.get_timeframe()
 
         # Apply row-level quality validation
         validated_rows = []

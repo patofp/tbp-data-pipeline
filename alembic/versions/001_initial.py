@@ -21,8 +21,10 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Create initial database schema with TimescaleDB hypertables."""
     
-    # Create schema
-    op.execute("CREATE SCHEMA IF NOT EXISTS trading")
+    # Create alembic schema for version table
+    op.execute("CREATE SCHEMA IF NOT EXISTS alembic")
+    
+    # Note: Using default 'public' schema for data tables
     
     # Create main market data table
     op.create_table(
@@ -39,13 +41,12 @@ def upgrade() -> None:
         sa.Column('transactions', sa.Integer(), nullable=True),
         sa.Column('ingested_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now()),
         sa.PrimaryKeyConstraint('ticker', 'timestamp', 'timeframe', 'data_source'),
-        schema='trading'
     )
     
     # Convert to hypertable
     op.execute("""
         SELECT create_hypertable(
-            'trading.market_data_raw',
+            'market_data_raw',
             'timestamp',
             if_not_exists => TRUE
         )
@@ -56,7 +57,6 @@ def upgrade() -> None:
         'idx_market_data_timestamp',
         'market_data_raw',
         ['timestamp'],
-        schema='trading',
         postgresql_using='btree',
         postgresql_concurrently=False
     )
@@ -65,14 +65,12 @@ def upgrade() -> None:
         'idx_market_data_ticker',
         'market_data_raw',
         ['ticker'],
-        schema='trading'
     )
     
     op.create_index(
         'idx_market_data_ticker_timeframe',
         'market_data_raw',
         ['ticker', 'timeframe'],
-        schema='trading'
     )
     
     # Create failed downloads tracking table
@@ -89,7 +87,6 @@ def upgrade() -> None:
         sa.Column('last_attempt_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now()),
         sa.Column('resolved_at', sa.TIMESTAMP(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('id'),
-        schema='trading'
     )
     
     # Create data quality metrics table
@@ -106,7 +103,6 @@ def upgrade() -> None:
         sa.Column('quality_score', sa.Numeric(5, 2), nullable=True),
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now()),
         sa.PrimaryKeyConstraint('ticker', 'date', 'data_type'),
-        schema='trading'
     )
     
     # Create indexes for failed downloads
@@ -114,14 +110,12 @@ def upgrade() -> None:
         'idx_failed_downloads_ticker_date',
         'failed_downloads',
         ['ticker', 'date'],
-        schema='trading'
     )
     
     op.create_index(
         'idx_failed_downloads_unresolved',
         'failed_downloads',
         ['resolved_at'],
-        schema='trading',
         postgresql_where=sa.text('resolved_at IS NULL')
     )
 
@@ -130,16 +124,18 @@ def downgrade() -> None:
     """Drop all tables and schema."""
     
     # Drop indexes first
-    op.drop_index('idx_failed_downloads_unresolved', schema='trading')
-    op.drop_index('idx_failed_downloads_ticker_date', schema='trading')
-    op.drop_index('idx_market_data_ticker_timeframe', schema='trading')
-    op.drop_index('idx_market_data_ticker', schema='trading')
-    op.drop_index('idx_market_data_timestamp', schema='trading')
+    op.drop_index('idx_failed_downloads_unresolved')
+    op.drop_index('idx_failed_downloads_ticker_date')
+    op.drop_index('idx_market_data_ticker_timeframe')
+    op.drop_index('idx_market_data_ticker')
+    op.drop_index('idx_market_data_timestamp')
     
     # Drop tables
-    op.drop_table('data_quality_metrics', schema='trading')
-    op.drop_table('failed_downloads', schema='trading')
-    op.drop_table('market_data_raw', schema='trading')
+    op.drop_table('data_quality_metrics')
+    op.drop_table('failed_downloads')
+    op.drop_table('market_data_raw')
     
-    # Drop schema
-    op.execute("DROP SCHEMA IF EXISTS trading CASCADE")
+    # Drop alembic schema (this will also drop the version table)
+    op.execute("DROP SCHEMA IF EXISTS alembic CASCADE")
+    
+    # Note: Not dropping public schema as it's the default schema

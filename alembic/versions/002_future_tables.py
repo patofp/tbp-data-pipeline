@@ -33,13 +33,12 @@ def upgrade() -> None:
         sa.Column('exchange', sa.String(10), nullable=True),
         sa.Column('ingested_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now()),
         sa.PrimaryKeyConstraint('ticker', 'timestamp', 'data_source'),
-        schema='trading'
     )
     
     # Convert to hypertable
     op.execute("""
         SELECT create_hypertable(
-            'trading.trades_raw',
+            'trades_raw',
             'timestamp',
             if_not_exists => TRUE
         )
@@ -58,13 +57,12 @@ def upgrade() -> None:
         sa.Column('exchange', sa.String(10), nullable=True),
         sa.Column('ingested_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now()),
         sa.PrimaryKeyConstraint('ticker', 'timestamp', 'data_source'),
-        schema='trading'
     )
     
     # Convert to hypertable
     op.execute("""
         SELECT create_hypertable(
-            'trading.quotes_raw',
+            'quotes_raw',
             'timestamp',
             if_not_exists => TRUE
         )
@@ -87,14 +85,13 @@ def upgrade() -> None:
         sa.Column('transactions', sa.Integer(), nullable=True),
         sa.Column('bar_metric', sa.Numeric(15, 2), nullable=True),  # Dollar amount, volume count, etc.
         sa.Column('created_at', sa.TIMESTAMP(timezone=True), server_default=sa.func.now()),
-        sa.PrimaryKeyConstraint('ticker', 'bar_type', 'bar_number'),
-        schema='trading'
+        sa.PrimaryKeyConstraint('ticker', 'bar_type', 'bar_number', 'end_timestamp'),
     )
     
     # Convert to hypertable on end_timestamp for time-based queries
     op.execute("""
         SELECT create_hypertable(
-            'trading.alternative_bars',
+            'alternative_bars',
             'end_timestamp',
             if_not_exists => TRUE
         )
@@ -105,14 +102,12 @@ def upgrade() -> None:
         'idx_trades_timestamp',
         'trades_raw',
         ['timestamp'],
-        schema='trading'
     )
     
     op.create_index(
         'idx_trades_ticker',
         'trades_raw',
         ['ticker'],
-        schema='trading'
     )
     
     # Create indexes for quotes
@@ -120,14 +115,12 @@ def upgrade() -> None:
         'idx_quotes_timestamp',
         'quotes_raw',
         ['timestamp'],
-        schema='trading'
     )
     
     op.create_index(
         'idx_quotes_ticker',
         'quotes_raw',
         ['ticker'],
-        schema='trading'
     )
     
     # Create indexes for alternative bars
@@ -135,21 +128,18 @@ def upgrade() -> None:
         'idx_alt_bars_end_timestamp',
         'alternative_bars',
         ['end_timestamp'],
-        schema='trading'
     )
     
     op.create_index(
         'idx_alt_bars_ticker_type',
         'alternative_bars',
         ['ticker', 'bar_type'],
-        schema='trading'
     )
     
     op.create_index(
         'idx_alt_bars_ticker_type_timestamp',
         'alternative_bars',
         ['ticker', 'bar_type', 'end_timestamp'],
-        schema='trading'
     )
 
 
@@ -157,15 +147,15 @@ def downgrade() -> None:
     """Drop trades, quotes, and alternative bars tables."""
     
     # Drop indexes
-    op.drop_index('idx_alt_bars_ticker_type_timestamp', schema='trading')
-    op.drop_index('idx_alt_bars_ticker_type', schema='trading')
-    op.drop_index('idx_alt_bars_end_timestamp', schema='trading')
-    op.drop_index('idx_quotes_ticker', schema='trading')
-    op.drop_index('idx_quotes_timestamp', schema='trading')
-    op.drop_index('idx_trades_ticker', schema='trading')
-    op.drop_index('idx_trades_timestamp', schema='trading')
+    op.drop_index('idx_alt_bars_ticker_type_timestamp')
+    op.drop_index('idx_alt_bars_ticker_type')
+    op.drop_index('idx_alt_bars_end_timestamp')
+    op.drop_index('idx_quotes_ticker')
+    op.drop_index('idx_quotes_timestamp')
+    op.drop_index('idx_trades_ticker')
+    op.drop_index('idx_trades_timestamp')
     
     # Drop tables
-    op.drop_table('alternative_bars', schema='trading')
-    op.drop_table('quotes_raw', schema='trading')
-    op.drop_table('trades_raw', schema='trading')
+    op.drop_table('alternative_bars')
+    op.drop_table('quotes_raw')
+    op.drop_table('trades_raw')

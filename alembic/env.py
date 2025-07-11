@@ -6,9 +6,11 @@ import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from sqlalchemy import text
 from alembic import context
 
 # Add project root to Python path
@@ -43,10 +45,14 @@ def get_database_url():
     config_loader = ConfigLoader()
     db_config = config_loader.get_database_config()
     
-    # Build PostgreSQL URL
+    # URL-encode the username and password to handle special characters
+    username = quote_plus(db_config.connection.username)
+    password = quote_plus(db_config.connection.password)
+    
+    # Build PostgreSQL URL with properly encoded credentials
     return (
-        f"postgresql://{db_config.connection.username}:"
-        f"{db_config.connection.password}@"
+        f"postgresql://{username}:"
+        f"{password}@"
         f"{db_config.connection.host}:"
         f"{db_config.connection.port}/"
         f"{db_config.connection.database}"
@@ -70,6 +76,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        version_table_schema="alembic",
     )
 
     with context.begin_transaction():
@@ -83,7 +90,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
     """
     # Override the sqlalchemy.url with our configuration
-    configuration = config.get_section(config.config_ini_section)
+    configuration = config.get_section(config.config_ini_section) or {}
     configuration['sqlalchemy.url'] = get_database_url()
     
     connectable = engine_from_config(
@@ -93,6 +100,10 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # Create alembic schema if it doesn't exist
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS alembic"))
+        connection.commit()
+        
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -100,6 +111,7 @@ def run_migrations_online() -> None:
             compare_type=True,
             compare_server_default=True,
             include_schemas=True,
+            version_table_schema="alembic",
         )
 
         with context.begin_transaction():
