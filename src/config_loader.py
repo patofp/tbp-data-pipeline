@@ -108,7 +108,6 @@ class DatabaseColumnMapping:
     low: str
     window_start: str
     transactions: str
-    vwap: str
 
 
 @dataclass
@@ -242,7 +241,6 @@ class ConfigLoader:
             low=db_data["column_mapping"]["low"],
             window_start=db_data["column_mapping"]["window_start"],
             transactions=db_data["column_mapping"]["transactions"],
-            vwap=db_data["column_mapping"]["vwap"],
         )
 
         # Create database config object

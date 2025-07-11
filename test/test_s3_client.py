@@ -78,7 +78,7 @@ class TestS3ClientDownloads:
         assert len(df) >= 1
         
         # Check required columns
-        required_cols = ['ticker', 'open', 'high', 'low', 'close', 'volume', 'vwap']
+        required_cols = ['ticker', 'open', 'high', 'low', 'close', 'volume']
         for col in required_cols:
             assert col in df.columns
         

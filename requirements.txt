@@ -9,3 +9,5 @@ black>=23.0.0
 flake8>=6.0.0
 python-dotenv>=1.0.0
 rich>=13.0.0
+alembic>=1.13.0
+SQLAlchemy>=2.0.0

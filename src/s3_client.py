@@ -349,9 +349,6 @@ class PolygonS3Client:
         if not set(required_cols).issubset(set(df.columns)):
             missing = set(required_cols) - set(df.columns)
             raise ValueError(f"Missing required columns: {missing}")
-        
-        # Check if vwap column exists (optional)
-        has_vwap = "vwap" in df.columns
 
         # Filter for specific ticker only
         df_filtered = df[df["ticker"] == ticker].copy()
@@ -363,16 +360,10 @@ class PolygonS3Client:
 
         # Data type conversions
         numeric_cols = ["open", "high", "low", "close", "volume"]
-        if has_vwap:
-            numeric_cols.append("vwap")
         
         for col in numeric_cols:
             if col in df_filtered.columns:
                 df_filtered[col] = pd.to_numeric(df_filtered[col], errors="coerce")
-        
-        # Add vwap column if it doesn't exist
-        if not has_vwap:
-            df_filtered["vwap"] = None
 
         # Apply row-level quality validation
         validated_rows = []
@@ -381,7 +372,6 @@ class PolygonS3Client:
             "accepted": 0,
             "rejected_ohlc_nan": 0,
             "volume_set_zero": 0,
-            "vwap_kept_nan": 0,
             "invalid_ohlc_relationships": 0,
             "price_sanity_failures": 0,
         }
@@ -402,10 +392,6 @@ class PolygonS3Client:
             if pd.isna(row["volume"]):
                 row_modified["volume"] = 0
                 quality_metrics["volume_set_zero"] += 1
-
-            # VWAP NaN -> keep as NaN (will be NULL in DB)
-            if pd.isna(row["vwap"]):
-                quality_metrics["vwap_kept_nan"] += 1
 
             # OHLC relationship validation
             if (

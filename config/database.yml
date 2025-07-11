@@ -41,4 +41,3 @@ database:
     low: "low"                                # Low price
     window_start: "timestamp"                 # Timestamp (convert from nanoseconds)
     transactions: "transactions"              # Number of transactions
-    vwap: "vwap"  
