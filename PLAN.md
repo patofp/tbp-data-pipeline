@@ -117,16 +117,21 @@ scripts/
 
 #### Database Client Implementation
 - [ ] **Create src/database.py**
-  - [ ] TimescaleDBClient class using psycopg2
-  - [ ] Database schema creation (tables, hypertables, indexes)
-    - [ ] Single market_data_raw table for all tickers/timeframes
-    - [ ] Separate tables for trades_raw and quotes_raw
-    - [ ] Alternative bars table for dollar/volume bars
-    - [ ] Failed downloads tracking table
+  - [ ] Modular client architecture (not monolithic)
+    - [ ] TimescaleDBClient as main coordinator
+    - [ ] MarketDataClient for market_data_raw operations
+    - [ ] FailedDownloadsClient for retry tracking
+    - [ ] DataQualityClient for metrics storage
+  - [ ] Base client class with shared functionality
+  - [ ] Connection pool shared across all clients
   - [ ] Bulk insert operations with COPY protocol
+    - [ ] Process data by day (not entire history at once)
+    - [ ] ~390 rows per minute data, 1 row per daily data
+    - [ ] Target: >1K rows/second performance
   - [ ] Incremental logic (get_last_timestamp)
-  - [ ] Integration with DataQualityValidator for insert validation
-  - [ ] Configurable connection pool management (2-20 connections)
+  - [ ] ON CONFLICT handling (last value wins)
+  - [ ] Structured metrics and logging
+  - [ ] Configurable connection pool (2-20 connections)
 
 #### Main Download Logic
 - [ ] **Create src/downloader.py**
@@ -368,12 +373,25 @@ The project has successfully completed the S3Client implementation with comprehe
 - **Error categorization**: File-not-found vs download-failure for different retry strategies
 - **Testing strategy**: LocalStack with real Polygon.io fixtures for authentic testing
 
-**Database Architecture**:
-- **Single hypertable per data type**: Easier maintenance, better cross-ticker queries
-- **Alternative bars design**: Separate table with bar_number + timestamps for flexibility
-- **Connection pooling**: Configurable for scaling from MVP (2) to production (20+)
-- **Bulk inserts**: PostgreSQL COPY protocol for >1K records/second performance
-- **Schema separation**: trading.market_data_raw, trading.trades_raw, trading.quotes_raw
+### Database Client Design Decisions
+**Client Architecture**:
+- **Modular clients**: Separate client per table domain (MarketDataClient, FailedDownloadsClient, etc.)
+- **Shared connection pool**: Single pool shared across all clients for efficiency
+- **Base class pattern**: Common functionality (retry, metrics, logging) in BaseDBClient
+- **Coordinator pattern**: TimescaleDBClient coordinates all sub-clients
+
+**Data Processing Strategy**:
+- **Unit of work**: Process 1 day of data at a time
+- **Batch sizes**: ~1 row/day for daily data, ~390 rows/day for minute data
+- **Insert method**: PostgreSQL COPY for 10-50x performance over INSERT
+- **Memory usage**: Max ~150KB per batch (very efficient)
+- **Error recovery**: Failed days tracked individually for granular retry
+
+**Performance & Reliability**:
+- **Duplicates**: ON CONFLICT → UPDATE (last value wins)
+- **Connection pool**: Configurable 2-20 connections based on load
+- **Metrics**: Structured JSON logging for monitoring (rows/sec, latency)
+- **Transaction scope**: 1 day = 1 transaction = easy rollback
 
 ---
 
