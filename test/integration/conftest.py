@@ -12,7 +12,6 @@ import os
 import sys
 from pathlib import Path
 from datetime import datetime, date, timedelta
-from unittest.mock import Mock
 import pandas as pd
 import psycopg2
 import boto3
@@ -242,13 +241,40 @@ def postgres_container(docker_compose_file):
 @pytest.fixture(scope="session")
 def test_db_config():
     """Test database configuration."""
-    mock_config = Mock()
-    mock_config.connection.username = "test_user"
-    mock_config.connection.password = "test_password"
-    mock_config.connection.host = "localhost"
-    mock_config.connection.port = 5433
-    mock_config.connection.database = "test_db"
-    return mock_config
+    from src.config_loader import (
+        DatabaseConfig, DatabaseConnection, DatabasePool, DatabaseTables
+    )
+    
+    connection = DatabaseConnection(
+        host="localhost",
+        port=5433,
+        database="test_db",
+        username="test_user",
+        password="test_password"
+    )
+    
+    pool = DatabasePool(
+        min_connection=2,
+        max_connection=5,
+        connection_timeout_seconds=10,
+        idle_timeout_seconds=60
+    )
+    
+    tables = DatabaseTables(
+        market_data_raw="market_data_raw",
+        ingestion_log="ingestion_log",
+        data_quality="data_quality_metrics"
+    )
+    
+    return DatabaseConfig(
+        connection=connection,
+        pool=pool,
+        schema="trading",
+        tables=tables,
+        batch_insert_size=1000,
+        upsert_on_conflict=True,
+        column_mapping={}
+    )
 
 
 @pytest.fixture(scope="session")
@@ -342,40 +368,57 @@ def clean_db_per_test(test_db_connection, setup_test_schema):
 
 
 @pytest.fixture(scope="function") 
-def test_market_data_client(test_db_config, test_db_connection):
-    """Create MarketDataClient with test database connection."""
-    # Create a simple mock pool for testing
-    mock_pool = Mock()
+def test_market_data_client(postgres_container):
+    """Create MarketDataClient with real connection pool."""
+    from src.database.connection import ConnectionManager
+    from src.config_loader import (
+        DatabaseConfig, DatabaseConnection, DatabasePool, DatabaseTables
+    )
     
-    client = MarketDataClient(test_db_config, mock_pool)
+    # Create real database configuration
+    connection = DatabaseConnection(
+        host="localhost",
+        port=5433,
+        database="test_db",
+        username="test_user",
+        password="test_password"
+    )
     
-    # Override the _get_connection method to return our test connection
-    def mock_get_connection():
-        return test_db_connection
+    pool = DatabasePool(
+        min_connection=2,
+        max_connection=5,
+        connection_timeout_seconds=10,
+        idle_timeout_seconds=60
+    )
     
-    client._get_connection = mock_get_connection
+    tables = DatabaseTables(
+        market_data_raw="market_data_raw",
+        ingestion_log="ingestion_log",
+        data_quality="data_quality_metrics"
+    )
     
-    # Also override _execute_with_retry for direct database access
-    def mock_execute_with_retry(query, params=None, fetch=True, commit=False, max_retries=3):
-        cursor = test_db_connection.cursor()
-        try:
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            
-            if commit:
-                test_db_connection.commit()
-            
-            if fetch:
-                return cursor.fetchall()
-            return None
-        finally:
-            cursor.close()
+    db_config = DatabaseConfig(
+        connection=connection,
+        pool=pool,
+        schema="trading",
+        tables=tables,
+        batch_insert_size=1000,
+        upsert_on_conflict=True,
+        column_mapping={}
+    )
     
-    client._execute_with_retry = mock_execute_with_retry
+    # Create real connection manager
+    conn_manager = ConnectionManager(db_config)
+    conn_manager.initialize()
     
-    return client
+    # Create MarketDataClient with the internal psycopg2 pool
+    # The MarketDataClient expects a psycopg2 pool, not our wrapper
+    client = MarketDataClient(db_config, conn_manager.pool._pool)
+    
+    yield client
+    
+    # Cleanup
+    conn_manager.close()
 
 
 # Test data fixtures

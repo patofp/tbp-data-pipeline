@@ -31,9 +31,15 @@ src/
 ### Configuration Management:
 ```python
 # Always use ConfigLoader for settings
-config = ConfigLoader()
+config = ConfigLoader()  # MUST have config/ directory with YAML files
 s3_config = config.get_s3_config()  # Returns typed config object
 ```
+
+**Configuration Philosophy:**
+- Configuration files MUST exist in production
+- No fallbacks, no defaults, no "graceful handling" of missing config
+- Fail fast if configuration is missing or invalid
+- Use environment variables for secrets, YAML for structure
 
 ### Error Handling:
 ```python
@@ -73,6 +79,7 @@ for date in date_range:
 3. **Connection Pooling**: Share pools, never create connections
 4. **Batch Processing**: Optimize for bulk operations
 5. **Graceful Degradation**: Continue on partial failures
+6. **Fail Fast Configuration**: Configuration MUST exist - no fallbacks
 
 ## 🧪 Testing Requirements
 
@@ -124,6 +131,37 @@ def test_real_download(test_s3_client):
 3. **DON'T** assume dates are trading days
 4. **DON'T** ignore data validation
 5. **DON'T** use print() - use logging
+6. **DON'T** use default parameters in function signatures
+
+## 🚫 CRITICAL RULE: NO DEFAULT PARAMETERS
+
+**FUNDAMENTAL PRINCIPLE**: All parameters must be explicit!
+
+### ❌ FORBIDDEN - Default Parameters:
+```python
+def process_data(ticker: str, timeframe: str = '1d'):  # NO!
+def get_stats(ticker: str, data_source: str = 'polygon_s3'):  # NO!
+def delete_data(ticker: str, dry_run: bool = True):  # NO!
+```
+
+### ✅ REQUIRED - Explicit Parameters:
+```python
+def process_data(ticker: str, timeframe: str):  # YES!
+def get_stats(ticker: str, data_source: str):  # YES!
+def delete_data(ticker: str, dry_run: bool):  # YES!
+```
+
+### Why No Defaults:
+- **Prevents silent bugs**: No assumption about what default should be
+- **Makes tests explicit**: Every test must specify all parameters
+- **Avoids confusion**: No guessing what the default behavior is
+- **Forces intentional choices**: Every call is deliberate
+
+### Exception:
+Only Optional[] parameters where None has explicit meaning are allowed:
+```python
+def get_data(ticker: str, start_date: Optional[date] = None):  # OK if None means "no filter"
+```
 
 ## 📝 Coding Standards
 

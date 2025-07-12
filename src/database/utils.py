@@ -295,9 +295,9 @@ def prepare_dataframe_for_insert(
                 
             # Create identifier for logging
             parts = []
-            if 'ticker' in track_info:
-                parts.append(track_info['ticker'])
-            if 'date' in track_info:
+            if 'ticker' in track_info and track_info['ticker'] is not None:
+                parts.append(str(track_info['ticker']))
+            if 'date' in track_info and track_info['date'] is not None:
                 parts.append(str(track_info['date']))
             track_info['identifier'] = '_'.join(parts) if parts else f"row_{idx}"
             

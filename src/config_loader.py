@@ -131,6 +131,10 @@ class ConfigLoader:
         self.configs = {}
 
         # Load all YAML/YML files in the config directory
+        # Configuration MUST exist - fail fast if missing
+        if not os.path.exists(config_dir):
+            raise FileNotFoundError(f"Configuration directory '{config_dir}' not found. Configuration is required.")
+        
         for file in os.listdir(config_dir):
             if file.endswith((".yaml", ".yml")):
                 file_path = Path(config_dir) / file

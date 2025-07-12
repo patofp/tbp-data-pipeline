@@ -66,7 +66,8 @@ class TestInsertBatch:
         result = market_data_client.insert_batch(
             sample_dataframe,
             timeframe='1d',
-            data_source='test'
+            data_source='test',
+            on_conflict='update'
         )
         
         assert result['total_rows'] == 5
@@ -91,7 +92,8 @@ class TestInsertBatch:
             result = market_data_client.insert_batch(
                 empty_df,
                 timeframe='1d',
-                data_source='test'
+                data_source='test',
+                on_conflict='update'
             )
         
         assert result['total_rows'] == 0
@@ -106,6 +108,8 @@ class TestInsertBatch:
         
         result = market_data_client.insert_batch(
             sample_dataframe,
+            timeframe='1d',
+            data_source='polygon_s3',
             on_conflict='update'
         )
         
@@ -125,6 +129,8 @@ class TestInsertBatch:
         
         result = market_data_client.insert_batch(
             sample_dataframe,
+            timeframe='1d',
+            data_source='polygon_s3',
             on_conflict='nothing'
         )
         
@@ -142,6 +148,8 @@ class TestInsertBatch:
         
         result = market_data_client.insert_batch(
             sample_dataframe,
+            timeframe='1d',
+            data_source='polygon_s3',
             on_conflict='error'
         )
         
@@ -167,7 +175,9 @@ class TestInsertBatch:
                 
                 result = market_data_client.insert_batch(
                     sample_dataframe,
-                    timeframe='1m'
+                    timeframe='1m',
+                    data_source='polygon_s3',
+                    on_conflict='update'
                 )
                 
                 mock_estimate.assert_called_once_with('1m', 'insert')
@@ -183,6 +193,9 @@ class TestInsertBatch:
         
         result = market_data_client.insert_batch(
             large_df,
+            timeframe='1d',
+            data_source='polygon_s3',
+            on_conflict='update',
             batch_size=10
         )
         
@@ -203,6 +216,9 @@ class TestInsertBatch:
             
             result = market_data_client.insert_batch(
                 large_df,
+                timeframe='1d',
+                data_source='polygon_s3',
+                on_conflict='update',
                 batch_size=10,
                 throttle_rows_per_second=100
             )
@@ -228,7 +244,7 @@ class TestInsertBatch:
             return_value={'successful': 4, 'failed': failed_rows}
         )
         
-        result = market_data_client.insert_batch(sample_dataframe)
+        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
         
         assert result['successful'] == 4
         assert result['failed'] == 1
@@ -254,7 +270,7 @@ class TestInsertBatch:
             return_value={'successful': 0, 'failed': failed_rows}
         )
         
-        result = market_data_client.insert_batch(sample_dataframe)
+        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
         
         assert result['successful'] == 0
         assert result['failed'] == 5
@@ -281,7 +297,7 @@ class TestInsertBatch:
                 return_value={'successful': 1, 'failed': []}
             )
             
-            result = market_data_client.insert_batch(incomplete_df)
+            result = market_data_client.insert_batch(incomplete_df, timeframe='1d', data_source='polygon_s3', on_conflict='update')
             
             assert result['successful'] == 1
             assert result['failed'] == 0
@@ -306,7 +322,8 @@ class TestInsertBatch:
             result = market_data_client.insert_batch(
                 df,
                 timeframe='1h',
-                data_source='custom_source'
+                data_source='custom_source',
+                on_conflict='update'
             )
             
             # Verify the dataframe was modified to add metadata
@@ -331,7 +348,7 @@ class TestInsertBatch:
             return_value={'successful': 4, 'failed': failed_rows}
         )
         
-        result = market_data_client.insert_batch(sample_dataframe)
+        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
         
         failed_detail = result['failed_details'][0]
         assert failed_detail['original_index'] == 2
@@ -471,7 +488,7 @@ class TestGetLastTimestamp:
             return_value=[(None,)]
         )
         
-        result = market_data_client.get_last_timestamp('NEWSTOCK')
+        result = market_data_client.get_last_timestamp('NEWSTOCK', timeframe='1d', data_source='polygon_s3')
         
         assert result is None
     
@@ -483,6 +500,7 @@ class TestGetLastTimestamp:
         
         result = market_data_client.get_last_timestamp(
             'AAPL',
+            timeframe='1d',
             data_source='yahoo'
         )
         
@@ -498,7 +516,8 @@ class TestGetLastTimestamp:
         
         result = market_data_client.get_last_timestamp(
             'AAPL',
-            timeframe='5m'
+            timeframe='5m',
+            data_source='polygon_s3'
         )
         
         # Verify correct timeframe was queried
@@ -525,7 +544,9 @@ class TestGetDataGaps:
         result = market_data_client.get_data_gaps(
             'AAPL',
             date(2024, 1, 2),
-            date(2024, 1, 5)
+            date(2024, 1, 5),
+            timeframe='1d',
+            data_source='polygon_s3'
         )
         
         assert result == []
@@ -543,7 +564,9 @@ class TestGetDataGaps:
         result = market_data_client.get_data_gaps(
             'AAPL',
             date(2024, 1, 2),
-            date(2024, 1, 5)
+            date(2024, 1, 5),
+            timeframe='1d',
+            data_source='polygon_s3'
         )
         
         assert len(result) == 2
@@ -560,7 +583,9 @@ class TestGetDataGaps:
         result = market_data_client.get_data_gaps(
             'AAPL',
             date(2024, 1, 1),  # Monday
-            date(2024, 1, 7)   # Sunday
+            date(2024, 1, 7),   # Sunday
+            timeframe='1d',
+            data_source='polygon_s3'
         )
         
         # Verify query excluded weekends
@@ -582,7 +607,9 @@ class TestGetDataGaps:
         result = market_data_client.get_data_gaps(
             'AAPL',
             date(2024, 1, 2),
-            date(2024, 1, 5)
+            date(2024, 1, 5),
+            timeframe='1d',
+            data_source='polygon_s3'
         )
         
         assert len(result) == 4
@@ -597,7 +624,8 @@ class TestGetDataGaps:
             'AAPL',
             date(2024, 1, 2),
             date(2024, 1, 5),
-            timeframe='5m'
+            timeframe='5m',
+            data_source='polygon_s3'
         )
         
         # Verify timeframe filter was applied
@@ -720,6 +748,8 @@ class TestDeleteDateRange:
             'AAPL',
             date(2024, 1, 2),
             date(2024, 1, 5),
+            timeframe='1d',
+            data_source='polygon_s3',
             dry_run=True
         )
         
@@ -741,6 +771,8 @@ class TestDeleteDateRange:
             'AAPL',
             date(2024, 1, 2),
             date(2024, 1, 5),
+            timeframe='1d',
+            data_source='polygon_s3',
             dry_run=False
         )
         
@@ -757,7 +789,10 @@ class TestDeleteDateRange:
         result = market_data_client.delete_date_range(
             'AAPL',
             date(2024, 12, 1),
-            date(2024, 12, 31)
+            date(2024, 12, 31),
+            timeframe='1d',
+            data_source='polygon_s3',
+            dry_run=True
         )
         
         assert result == 0
@@ -851,7 +886,7 @@ class TestErrorHandling:
         )
         
         with pytest.raises(psycopg2.OperationalError):
-            market_data_client.get_last_timestamp('AAPL')
+            market_data_client.get_last_timestamp('AAPL', timeframe='1d', data_source='polygon_s3')
     
     def test_invalid_data_types(self, market_data_client):
         """Test handling of incorrect data types."""
@@ -873,7 +908,7 @@ class TestErrorHandling:
             mock_prepare.side_effect = ValueError("Invalid data types")
             
             with pytest.raises(ValueError, match="Invalid data types"):
-                market_data_client.insert_batch(invalid_df)
+                market_data_client.insert_batch(invalid_df, timeframe='1d', data_source='polygon_s3', on_conflict='update')
     
     def test_constraint_violations(self, market_data_client, sample_dataframe):
         """Test handling of database constraint violations."""
@@ -908,6 +943,8 @@ class TestErrorHandling:
         
         result = market_data_client.insert_batch(
             sample_dataframe,
+            timeframe='1d',
+            data_source='polygon_s3',
             on_conflict='error'  # No conflict handling
         )
         
@@ -947,6 +984,9 @@ class TestPerformance:
             with patch('src.database.market_data.calculate_insert_throttle', return_value=0.1) as mock_throttle:
                 result = market_data_client.insert_batch(
                     large_df,
+                    timeframe='1d',
+                    data_source='polygon_s3',
+                    on_conflict='update',
                     batch_size=10,
                     throttle_rows_per_second=100
                 )
@@ -979,7 +1019,7 @@ class TestMetrics:
         )
         
         with caplog.at_level(logging.INFO):
-            result = market_data_client.insert_batch(sample_dataframe)
+            result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
         
         # Check for expected log messages
         log_messages = [record.message for record in caplog.records]
@@ -1000,7 +1040,7 @@ class TestMetrics:
         )
         
         # Perform operation
-        result = market_data_client.insert_batch(sample_dataframe)
+        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
         
         # Performance metrics should be in result
         assert 'duration_seconds' in result

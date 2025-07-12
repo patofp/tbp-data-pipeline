@@ -41,9 +41,9 @@ class MarketDataClient(BaseDBClient):
     def insert_batch(
         self, 
         df: pd.DataFrame,
-        timeframe: str = '1d',
-        data_source: str = 'polygon_s3',
-        on_conflict: str = 'update',
+        timeframe: str,
+        data_source: str,
+        on_conflict: str,
         batch_size: Optional[int] = None,
         throttle_rows_per_second: Optional[float] = None
     ) -> Dict[str, Any]:
@@ -70,6 +70,17 @@ class MarketDataClient(BaseDBClient):
             }
         """
         start_time = time.time()
+        
+        # Handle empty dataframe
+        if df.empty:
+            return {
+                'total_rows': 0,
+                'successful': 0,
+                'failed': 0,
+                'failed_details': [],
+                'duration_seconds': 0,
+                'rows_per_second': 0
+            }
         
         # Add metadata columns if not present
         df_copy = df.copy()
@@ -257,8 +268,8 @@ class MarketDataClient(BaseDBClient):
     def get_last_timestamp(
         self, 
         ticker: str, 
-        timeframe: str = '1d',
-        data_source: str = 'polygon_s3'
+        timeframe: str,
+        data_source: str
     ) -> Optional[datetime]:
         """
         Get the most recent timestamp for a ticker.
@@ -304,8 +315,8 @@ class MarketDataClient(BaseDBClient):
         ticker: str, 
         start_date: date, 
         end_date: date,
-        timeframe: str = '1d',
-        data_source: str = 'polygon_s3'
+        timeframe: str,
+        data_source: str
     ) -> List[date]:
         """
         Find missing dates in the data range.
@@ -433,9 +444,9 @@ class MarketDataClient(BaseDBClient):
         ticker: str, 
         start_date: date, 
         end_date: date,
-        timeframe: str = '1d',
-        data_source: str = 'polygon_s3',
-        dry_run: bool = True
+        timeframe: str,
+        data_source: str,
+        dry_run: bool
     ) -> int:
         """
         Delete data for a date range (useful for reprocessing).

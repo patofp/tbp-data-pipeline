@@ -7,9 +7,13 @@ Handles all PostgreSQL/TimescaleDB operations for market data storage.
 ```
 database/
 ├── __init__.py
-├── connection.py      # 📋 TODO: Connection pool management
-├── market_data.py     # 🚧 MarketDataClient implementation
-└── utils.py          # ✅ Helper functions (COPY, batch ops)
+├── connection.py      # ✅ DONE: Connection pool management
+├── market_data.py     # ✅ DONE: MarketDataClient implementation
+├── base.py           # ✅ DONE: Base client with retry logic
+├── utils.py          # ✅ DONE: Helper functions (COPY, batch ops)
+├── client.py         # 📋 TODO: Main coordinator client
+├── failed_download.py # 📋 TODO: Failed download tracking
+└── data_quality.py   # 📋 TODO: Data quality metrics
 ```
 
 ## 🏗️ Architecture Decisions
@@ -34,13 +38,20 @@ database/
 
 ### Using Connection Pool:
 ```python
-def _get_connection(self) -> Connection:
-    """Get connection from pool."""
-    # TODO: When ConnectionManager exists:
-    # return self.connection_manager.get_connection()
-    
-    # For now, using mock or direct connection
-    return self._connection
+# ✅ IMPLEMENTED - Connection pooling is now available!
+
+# 1. Initialize ConnectionManager
+from src.database.connection import ConnectionManager
+conn_manager = ConnectionManager(db_config)
+conn_manager.initialize()
+
+# 2. Pass internal pool to clients (they expect psycopg2 pool)
+client = MarketDataClient(db_config, conn_manager.pool._pool)
+
+# 3. Use context manager for connections
+with client._get_connection() as conn:
+    cursor = conn.cursor()
+    # Execute queries
 ```
 
 ### Bulk Insert Pattern:

@@ -3,6 +3,12 @@
 ## 🎯 Golden Rule
 **ALWAYS mock external dependencies - NO exceptions!**
 
+## 🔄 Recent Updates (January 2025)
+- ✅ **Connection tests added**: Full unit test coverage for `ConnectionPool` and `ConnectionManager`
+- ✅ **Mock patterns**: Use `@patch` for psycopg2 pool and connections
+- ✅ **15 unit tests**: All passing for connection module
+- ✅ **New fixtures**: `mock_db_config` for database configuration mocking
+
 ## ✅ What to Test Here
 - Business logic and algorithms
 - Data transformations
@@ -25,6 +31,13 @@ mock_conn = Mock()
 mock_cursor = Mock()
 mock_conn.cursor.return_value = mock_cursor
 mock_cursor.fetchall.return_value = [(row,data)]
+
+# Mock connection pool (psycopg2)
+@patch('src.database.connection.pool.ThreadedConnectionPool')
+def test_pool(mock_pool_class):
+    mock_pool = MagicMock()
+    mock_pool_class.return_value = mock_pool
+    mock_pool.getconn.return_value = mock_conn
 ```
 
 ### S3 Mocks:

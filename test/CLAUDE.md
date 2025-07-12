@@ -4,6 +4,11 @@
 **Unit Tests**: Fast, isolated, with mocks - for business logic
 **Integration Tests**: Real services, end-to-end - for workflows
 
+## 🔄 Recent Updates (January 2025)
+- ✅ **Connection pooling implemented**: Real `ConnectionPool` and `ConnectionManager` classes
+- ✅ **Integration tests updated**: Now use real connection pools, no more mocking ConnectionManager
+- ✅ **Docker automation**: Tests automatically start/stop containers via fixtures
+
 ## 📁 Test Structure
 ```
 test/
@@ -113,6 +118,80 @@ class TestWorkflow:
 3. **Tests depending on order** → Each test independent!
 4. **No cleanup between tests** → Use fixtures!
 5. **Testing third-party code** → Test your logic only!
+
+## 🚫 CRITICAL RULE: NEVER CHANGE IMPLEMENTATION TO MAKE TESTS PASS
+
+**FUNDAMENTAL PRINCIPLE**: Tests validate correctness, not define behavior!
+
+### ✅ CORRECT Approach - Fix Real Implementation Bugs:
+- NULL handling causing crashes → Fix implementation
+- Missing error handling → Add proper error handling  
+- Performance issues → Optimize implementation
+- Security vulnerabilities → Fix implementation
+- Logic errors → Correct the logic
+
+### ❌ FORBIDDEN - Changing Implementation for Test Convenience:
+- Test expects List[Dict] but implementation returns List[str] → Fix test expectation
+- Test passes wrong parameters → Fix test parameters
+- Test has wrong assertions → Fix test assertions
+- Test expects different return type → Fix test expectations
+
+### Decision Framework:
+**When a test fails, ask these questions IN ORDER:**
+
+1. **Is the test scenario legitimate?**
+   - Does the test represent a real-world use case?
+   - Should the application handle this scenario gracefully?
+   - Is this a valid requirement for robust software?
+
+2. **If test scenario is legitimate:**
+   - Is there a real bug in the implementation? → Fix implementation
+   - Is the implementation missing required functionality? → Add functionality
+
+3. **If test scenario is illegitimate:**
+   - Is the test expectation wrong? → Fix test
+   - Is the test using wrong parameters? → Fix test
+   - Is the test testing internal details? → Fix test
+
+**Never ask**: "How can I change the code to make this test pass?"
+
+### Example Analysis:
+```
+Test fails: "ConfigLoader crashes when config directory doesn't exist"
+
+1. Is this scenario legitimate?
+   ❌ NO - In production, configuration MUST exist. Fail fast is better.
+   
+2. Is this a test of an impossible scenario?
+   ✅ YES - Production deployment always includes configuration
+   
+3. Action: Remove test - this scenario should never occur
+```
+
+```
+Test fails: "Method expects List[Dict] but implementation returns List[date]"
+
+1. Is this scenario legitimate?
+   ❌ NO - Test expects wrong return type
+   
+2. Action: Fix test expectation to match correct implementation
+```
+
+### Examples:
+
+```python
+# ❌ BAD - Changing implementation for test
+def get_data_gaps() -> List[str]:  # Test expects this
+    return ["2024-01-01"]  # Wrong! Dates should be date objects
+
+# ✅ GOOD - Fix test expectation
+def get_data_gaps() -> List[date]:  # Correct return type
+    return [date(2024, 1, 1)]
+
+# In test: assert gaps[0] == date(2024, 1, 1)  # Fix test
+```
+
+**Remember**: Implementation defines business logic. Tests verify it works correctly.
 
 ## 📊 Coverage Guidelines
 

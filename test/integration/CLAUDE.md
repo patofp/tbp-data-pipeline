@@ -3,6 +3,12 @@
 ## 🎯 Golden Rule
 **NEVER mock services - Use real Docker containers!**
 
+## 🔄 Recent Updates (January 2025)
+- ✅ **Real connection pooling**: `test_market_data_client` now uses `ConnectionManager` with real pool
+- ✅ **No more mocks**: Removed all ConnectionManager mocking from integration tests
+- ✅ **Automatic Docker management**: Fixtures handle container lifecycle automatically
+- ✅ **Pool access**: MarketDataClient uses `conn_manager.pool._pool` (internal psycopg2 pool)
+
 ## ✅ What to Test Here
 - Database operations (INSERT, UPDATE, SELECT)
 - S3 file uploads/downloads with LocalStack
@@ -15,10 +21,15 @@
 
 ### PostgreSQL + TimescaleDB (port 5433):
 ```python
-# Automatically provided by fixtures
+# Automatically provided by fixtures with REAL connection pool
 def test_database(test_market_data_client):
-    # Real database operations
+    # Real database operations with connection pooling
     result = test_market_data_client.insert_batch(data)
+    
+    # Direct connection access (if needed)
+    with test_market_data_client._get_connection() as conn:
+        cursor = conn.cursor()
+        # Execute raw SQL
 ```
 
 ### LocalStack S3 (port 4566):
