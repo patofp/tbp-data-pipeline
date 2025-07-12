@@ -205,15 +205,15 @@ class TestConnectionManagerIntegration:
                 value TEXT
             )
             """
-            manager.execute_query(create_table_query, fetch=False)
+            manager.execute_query(create_table_query, fetch=False, params=None)
             
             # Insert data
             insert_query = f"INSERT INTO {connection_test_db_config.schema}.test_table (value) VALUES (%s)"
-            manager.execute_query(insert_query, ("test_value",), fetch=False)
+            manager.execute_query(insert_query, fetch=False, params=("test_value",))
             
             # Select data
             select_query = f"SELECT value FROM {connection_test_db_config.schema}.test_table"
-            results = manager.execute_query(select_query)
+            results = manager.execute_query(select_query, fetch=True, params=None)
             
             assert len(results) == 1
             assert results[0][0] == "test_value"
@@ -240,7 +240,7 @@ class TestConnectionManagerIntegration:
                 value INTEGER
             )
             """
-            manager.execute_query(create_table_query, fetch=False)
+            manager.execute_query(create_table_query, fetch=False, params=None)
             
             # Test transaction rollback
             with manager.get_connection() as conn:
@@ -257,7 +257,9 @@ class TestConnectionManagerIntegration:
                     
             # Verify no data was inserted
             results = manager.execute_query(
-                f"SELECT COUNT(*) FROM {connection_test_db_config.schema}.test_trans"
+                f"SELECT COUNT(*) FROM {connection_test_db_config.schema}.test_trans",
+                fetch=True,
+                params=None
             )
             assert results[0][0] == 0
             
@@ -272,7 +274,9 @@ class TestConnectionManagerIntegration:
                 
             # Verify data was inserted
             results = manager.execute_query(
-                f"SELECT value FROM {connection_test_db_config.schema}.test_trans"
+                f"SELECT value FROM {connection_test_db_config.schema}.test_trans",
+                fetch=True,
+                params=None
             )
             assert len(results) == 1
             assert results[0][0] == 2

@@ -28,10 +28,10 @@ class DataQualityClient(BaseDBClient):
         """Get quality report for all tickers on a specific date."""
         pass
     
-    def get_ticker_quality_trend(self, ticker: str, days: int = 30) -> pd.DataFrame:
+    def get_ticker_quality_trend(self, ticker: str, days: int) -> pd.DataFrame:
         """Get quality score trend for a ticker."""
         pass
     
-    def flag_quality_issues(self, threshold: float = 0.95) -> pd.DataFrame:
+    def flag_quality_issues(self, threshold: float) -> pd.DataFrame:
         """Find all ticker-dates with quality below threshold."""
         pass

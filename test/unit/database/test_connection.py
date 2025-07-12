@@ -231,7 +231,7 @@ class TestConnectionManager:
         manager._initialized = True
         
         # Execute
-        result = manager.execute_query("SELECT * FROM test", fetch=True)
+        result = manager.execute_query("SELECT * FROM test", fetch=True, params=None)
         
         # Verify
         assert result == [(1, 2), (3, 4)]
@@ -253,7 +253,7 @@ class TestConnectionManager:
         manager._initialized = True
         
         # Execute
-        result = manager.execute_query("INSERT INTO test VALUES (1)", fetch=False)
+        result = manager.execute_query("INSERT INTO test VALUES (1)", fetch=False, params=None)
         
         # Verify
         assert result is None

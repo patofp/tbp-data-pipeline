@@ -31,11 +31,6 @@ class ConnectionPool:
             db_config: Database configuration from config loader
         """
         self.config = db_config
-        
-        
-        
-        
-        
         self._pool: Optional[pool.ThreadedConnectionPool] = None
         
     def initialize(self) -> None:
@@ -188,7 +183,7 @@ class ConnectionManager:
         with self.pool.get_connection() as conn:
             yield conn
             
-    def execute_query(self, query: str, params: Optional[tuple] = None, fetch: bool = True) -> Any:
+    def execute_query(self, query: str, fetch: bool, params: Optional[tuple]) -> Any:
         """Execute a query with automatic connection management.
         
         Args:

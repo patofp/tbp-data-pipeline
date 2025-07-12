@@ -104,10 +104,10 @@ class BaseDBClient:
     def _execute_with_retry(
         self, 
         query: str, 
-        params: Optional[Union[Tuple, Dict]] = None,
-        max_retries: int = 3,
-        fetch: bool = True,
-        commit: bool = False
+        params: Optional[Union[Tuple, Dict]],
+        max_retries: int,
+        fetch: bool,
+        commit: bool
     ) -> Any:
         """
         Execute query with retry logic and exponential backoff.
@@ -330,7 +330,7 @@ class BaseDBClient:
             'average_time_ms': avg_time
         }
     
-    def execute_sql_file(self, filepath: str, commit: bool = True) -> None:
+    def execute_sql_file(self, filepath: str, commit: bool) -> None:
         """
         Execute SQL commands from a file.
         

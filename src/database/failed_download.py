@@ -20,7 +20,7 @@ class FailedDownloadsClient(BaseDBClient):
         """Record multiple failures in one transaction."""
         pass
     
-    def get_pending_retries(self, max_attempts: int = 3) -> List[FailedDownload]:
+    def get_pending_retries(self, max_attempts: int) -> List[FailedDownload]:
         """Get failed downloads that should be retried."""
         pass
     
@@ -36,6 +36,6 @@ class FailedDownloadsClient(BaseDBClient):
         """Get summary of all failures by ticker and error type."""
         pass
     
-    def cleanup_old_resolved(self, days: int = 30) -> int:
+    def cleanup_old_resolved(self, days: int) -> int:
         """Clean up old resolved failures."""
         pass

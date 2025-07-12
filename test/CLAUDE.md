@@ -155,6 +155,29 @@ class TestWorkflow:
 
 **Never ask**: "How can I change the code to make this test pass?"
 
+### ❌ FORBIDDEN - Optional Parameters with Defaults:
+Even Optional parameters cannot have default values:
+```python
+# Implementation
+def query(sql: str, params: Optional[tuple] = None):  # NO!
+    pass
+
+# Test
+def test_query():
+    query("SELECT 1")  # NO! Implicit None
+```
+
+### ✅ REQUIRED - Explicit Optional Parameters:
+```python
+# Implementation
+def query(sql: str, params: Optional[tuple]):  # YES!
+    pass
+
+# Test
+def test_query():
+    query("SELECT 1", params=None)  # YES! Explicit None
+```
+
 ### Example Analysis:
 ```
 Test fails: "ConfigLoader crashes when config directory doesn't exist"

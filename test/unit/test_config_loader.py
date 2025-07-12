@@ -29,7 +29,7 @@ class TestConfigLoaderEnvironment:
     })
     def test_environment_validation_success(self):
         """Test successful environment validation with all required vars."""
-        config = ConfigLoader()
+        config = ConfigLoader("config")
         assert config.validate_environment() is True
     
     @patch.dict('os.environ', {
@@ -45,7 +45,7 @@ class TestConfigLoaderEnvironment:
     }, clear=True)
     def test_environment_validation_missing_required(self):
         """Test environment validation fails when required var missing."""
-        config = ConfigLoader()
+        config = ConfigLoader("config")
         assert config.validate_environment() is False
     
     @patch.dict('os.environ', {
@@ -60,7 +60,7 @@ class TestConfigLoaderEnvironment:
     })
     def test_environment_validation_empty_value(self):
         """Test environment validation fails when required var is empty."""
-        config = ConfigLoader()
+        config = ConfigLoader("config")
         assert config.validate_environment() is False
 
 
@@ -90,7 +90,7 @@ tickers:
     @patch('os.listdir', return_value=['instruments.yml'])
     def test_loading_tickers(self, mock_listdir, mock_exists, mock_file):
         """Test loading tickers from YAML configuration."""
-        config = ConfigLoader()
+        config = ConfigLoader("config")
         tickers = config.get_all_tickers()
         
         assert isinstance(tickers, list)
@@ -113,7 +113,7 @@ ticker_groups:
     @patch('os.listdir', return_value=['instruments.yml'])
     def test_ticker_groups(self, mock_listdir, mock_exists, mock_file):
         """Test getting tickers organized by priority groups."""
-        config = ConfigLoader()
+        config = ConfigLoader("config")
         groups = config.get_ticker_groups()
         
         assert isinstance(groups, dict)
@@ -159,7 +159,7 @@ s3_config:
     })
     def test_s3_config_loading(self, mock_listdir, mock_exists, mock_file):
         """Test S3 configuration loads correctly from environment."""
-        config = ConfigLoader()
+        config = ConfigLoader("config")
         s3_config = config.get_s3_config()
         
         assert s3_config.endpoint == "https://files.polygon.io"  # From YAML, not env
@@ -199,7 +199,7 @@ s3_config:
     })
     def test_s3_config_default_endpoint(self, mock_listdir, mock_exists, mock_file):
         """Test S3 configuration uses default endpoint when not specified."""
-        config = ConfigLoader()
+        config = ConfigLoader("config")
         s3_config = config.get_s3_config()
         
         # The template substitution doesn't process default values in tests
@@ -220,7 +220,7 @@ class TestConfigLoaderDatabase:
     })
     def test_database_config_loading(self):
         """Test database configuration loads correctly from environment."""
-        config = ConfigLoader()
+        config = ConfigLoader("config")
         db_config = config.get_database_config()
         
         assert db_config.connection.host == "192.168.1.11"
@@ -240,7 +240,7 @@ class TestConfigLoaderDatabase:
     })
     def test_database_config_custom_values(self):
         """Test database configuration with custom values."""
-        config = ConfigLoader()
+        config = ConfigLoader("config")
         db_config = config.get_database_config()
         
         assert db_config.connection.port == "5433"

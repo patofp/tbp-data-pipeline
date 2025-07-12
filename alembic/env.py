@@ -42,7 +42,7 @@ target_metadata = None
 
 def get_database_url():
     """Get database URL from our configuration system."""
-    config_loader = ConfigLoader()
+    config_loader = ConfigLoader("config")
     db_config = config_loader.get_database_config()
     
     # URL-encode the username and password to handle special characters

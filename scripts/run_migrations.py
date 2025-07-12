@@ -44,7 +44,7 @@ def get_alembic_config():
 def test_database_connection():
     """Test database connection before running migrations."""
     try:
-        config_loader = ConfigLoader()
+        config_loader = ConfigLoader("config")
         db_config = config_loader.get_database_config()
         console.print("[green]✓[/green] Database configuration loaded successfully")
         return True

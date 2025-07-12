@@ -31,7 +31,7 @@ src/
 ### Configuration Management:
 ```python
 # Always use ConfigLoader for settings
-config = ConfigLoader()  # MUST have config/ directory with YAML files
+config = ConfigLoader("config")  # MUST have config/ directory with YAML files
 s3_config = config.get_s3_config()  # Returns typed config object
 ```
 
@@ -142,6 +142,8 @@ def test_real_download(test_s3_client):
 def process_data(ticker: str, timeframe: str = '1d'):  # NO!
 def get_stats(ticker: str, data_source: str = 'polygon_s3'):  # NO!
 def delete_data(ticker: str, dry_run: bool = True):  # NO!
+def get_data(ticker: str, start_date: Optional[date] = None):  # NO!
+def execute_query(query: str, params: Optional[tuple] = None):  # NO!
 ```
 
 ### ✅ REQUIRED - Explicit Parameters:
@@ -149,6 +151,8 @@ def delete_data(ticker: str, dry_run: bool = True):  # NO!
 def process_data(ticker: str, timeframe: str):  # YES!
 def get_stats(ticker: str, data_source: str):  # YES!
 def delete_data(ticker: str, dry_run: bool):  # YES!
+def get_data(ticker: str, start_date: Optional[date]):  # YES!
+def execute_query(query: str, params: Optional[tuple]):  # YES!
 ```
 
 ### Why No Defaults:
@@ -156,12 +160,12 @@ def delete_data(ticker: str, dry_run: bool):  # YES!
 - **Makes tests explicit**: Every test must specify all parameters
 - **Avoids confusion**: No guessing what the default behavior is
 - **Forces intentional choices**: Every call is deliberate
+- **No hidden None values**: Optional parameters must be explicitly passed
 
-### Exception:
-Only Optional[] parameters where None has explicit meaning are allowed:
-```python
-def get_data(ticker: str, start_date: Optional[date] = None):  # OK if None means "no filter"
-```
+### NO EXCEPTIONS:
+- Even `Optional[...] = None` is forbidden
+- If a parameter can be None, callers must explicitly pass None
+- This applies to ALL parameters: required, optional, positional, keyword
 
 ## 📝 Coding Standards
 

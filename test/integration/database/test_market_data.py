@@ -59,7 +59,9 @@ class TestInsertBatchIntegration:
             sample_market_data,
             timeframe='1d',
             data_source='test_integration',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Verify results
@@ -93,7 +95,9 @@ class TestInsertBatchIntegration:
             unique_data,
             timeframe='1d',
             data_source='test_duplicates',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         assert result1['successful'] == len(unique_data)
@@ -105,7 +109,9 @@ class TestInsertBatchIntegration:
             unique_data,
             timeframe='1d',
             data_source='test_duplicates',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # With ON CONFLICT DO UPDATE, the rows should be updated successfully
@@ -120,7 +126,9 @@ class TestInsertBatchIntegration:
             empty_df,
             timeframe='1d',
             data_source='test_empty',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         assert result['total_rows'] == 0
@@ -139,7 +147,9 @@ class TestGetLastTimestampIntegration:
             sample_market_data,
             timeframe='1d',
             data_source='test_timestamp',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Get last timestamp for AAPL
@@ -179,7 +189,9 @@ class TestGetDataGapsIntegration:
             sample_data_with_gaps,
             timeframe='1d',
             data_source='test_gaps',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Check for gaps
@@ -204,7 +216,9 @@ class TestGetDataGapsIntegration:
             continuous_data,
             timeframe='1d',
             data_source='test_no_gaps',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Check for gaps in a range that should have no gaps
@@ -233,7 +247,9 @@ class TestGetTickerStatsIntegration:
             sample_market_data,
             timeframe='1d',
             data_source='test_stats',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Get stats for AAPL
@@ -278,7 +294,9 @@ class TestDeleteDateRangeIntegration:
             sample_market_data,
             timeframe='1d',
             data_source='test_delete',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Count initial records
@@ -340,11 +358,13 @@ class TestGetDataSummaryIntegration:
             sample_market_data,
             timeframe='1d',
             data_source='test_summary',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Get summary
-        summary = test_market_data_client.get_data_summary()
+        summary = test_market_data_client.get_data_summary(start_date=None, end_date=None)
         
         assert isinstance(summary, pd.DataFrame)
         assert len(summary) > 0
@@ -361,7 +381,7 @@ class TestGetDataSummaryIntegration:
     
     def test_get_data_summary_no_data(self, test_market_data_client):
         """Test getting summary when no data exists."""
-        summary = test_market_data_client.get_data_summary()
+        summary = test_market_data_client.get_data_summary(start_date=None, end_date=None)
         
         assert isinstance(summary, pd.DataFrame)
         assert len(summary) == 0
@@ -402,7 +422,9 @@ class TestPerformanceIntegration:
             large_df,
             timeframe='1d',
             data_source='test_performance',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         assert result['total_rows'] == len(large_df)
@@ -420,7 +442,9 @@ class TestPerformanceIntegration:
             sample_market_data,
             timeframe='1d',
             data_source='test_concurrent',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         assert insert_result['successful'] > 0
@@ -466,7 +490,9 @@ class TestErrorHandlingIntegration:
             invalid_data,
             timeframe='1d',
             data_source='test_constraint',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Should report failure
@@ -491,7 +517,9 @@ class TestErrorHandlingIntegration:
             null_data,
             timeframe='1d',
             data_source='test_null',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Should report failure or skip null rows

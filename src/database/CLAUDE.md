@@ -100,6 +100,32 @@ except psycopg2.OperationalError:
 - Verify performance metrics
 - Test transaction handling
 
+## 🚫 NO DEFAULT PARAMETERS - INCLUDING OPTIONAL
+
+**CRITICAL**: No default values for ANY parameters, including Optional types!
+
+### ❌ FORBIDDEN:
+```python
+def execute_query(query: str, params: Optional[tuple] = None):  # NO!
+def insert_batch(df: pd.DataFrame, batch_size: Optional[int] = None):  # NO!
+def get_data_summary(start_date: Optional[date] = None):  # NO!
+```
+
+### ✅ REQUIRED:
+```python
+def execute_query(query: str, params: Optional[tuple]):  # YES!
+def insert_batch(df: pd.DataFrame, batch_size: Optional[int]):  # YES!
+def get_data_summary(start_date: Optional[date]):  # YES!
+```
+
+Callers must explicitly pass None when needed:
+```python
+# Explicit None passing
+execute_query("SELECT * FROM table", params=None)
+insert_batch(df, batch_size=None)  # Use default calculation
+get_data_summary(start_date=None)  # No date filter
+```
+
 ## ⚡ Performance Guidelines
 
 ### Batch Processing:

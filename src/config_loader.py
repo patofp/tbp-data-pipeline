@@ -126,7 +126,7 @@ class DatabaseConfig:
 class ConfigLoader:
     """Load and validate configuration from YAML files with template substitution."""
 
-    def __init__(self, config_dir: str = "config"):
+    def __init__(self, config_dir: str):
         self.config_dir = Path(config_dir)
         self.configs = {}
 

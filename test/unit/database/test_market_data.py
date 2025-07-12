@@ -67,7 +67,9 @@ class TestInsertBatch:
             sample_dataframe,
             timeframe='1d',
             data_source='test',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         assert result['total_rows'] == 5
@@ -93,7 +95,9 @@ class TestInsertBatch:
                 empty_df,
                 timeframe='1d',
                 data_source='test',
-                on_conflict='update'
+                on_conflict='update',
+                batch_size=None,
+                throttle_rows_per_second=None
             )
         
         assert result['total_rows'] == 0
@@ -110,7 +114,9 @@ class TestInsertBatch:
             sample_dataframe,
             timeframe='1d',
             data_source='polygon_s3',
-            on_conflict='update'
+            on_conflict='update',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Verify conflict config was passed correctly
@@ -131,7 +137,9 @@ class TestInsertBatch:
             sample_dataframe,
             timeframe='1d',
             data_source='polygon_s3',
-            on_conflict='nothing'
+            on_conflict='nothing',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Verify conflict config
@@ -150,7 +158,9 @@ class TestInsertBatch:
             sample_dataframe,
             timeframe='1d',
             data_source='polygon_s3',
-            on_conflict='error'
+            on_conflict='error',
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         # Verify no conflict config
@@ -177,7 +187,9 @@ class TestInsertBatch:
                     sample_dataframe,
                     timeframe='1m',
                     data_source='polygon_s3',
-                    on_conflict='update'
+                    on_conflict='update',
+                    batch_size=None,
+                    throttle_rows_per_second=None
                 )
                 
                 mock_estimate.assert_called_once_with('1m', 'insert')
@@ -196,7 +208,8 @@ class TestInsertBatch:
             timeframe='1d',
             data_source='polygon_s3',
             on_conflict='update',
-            batch_size=10
+            batch_size=10,
+            throttle_rows_per_second=None
         )
         
         # Should be called multiple times with batch_size=10
@@ -244,7 +257,7 @@ class TestInsertBatch:
             return_value={'successful': 4, 'failed': failed_rows}
         )
         
-        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
+        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update', batch_size=None, throttle_rows_per_second=None)
         
         assert result['successful'] == 4
         assert result['failed'] == 1
@@ -270,7 +283,7 @@ class TestInsertBatch:
             return_value={'successful': 0, 'failed': failed_rows}
         )
         
-        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
+        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update', batch_size=None, throttle_rows_per_second=None)
         
         assert result['successful'] == 0
         assert result['failed'] == 5
@@ -297,7 +310,7 @@ class TestInsertBatch:
                 return_value={'successful': 1, 'failed': []}
             )
             
-            result = market_data_client.insert_batch(incomplete_df, timeframe='1d', data_source='polygon_s3', on_conflict='update')
+            result = market_data_client.insert_batch(incomplete_df, timeframe='1d', data_source='polygon_s3', on_conflict='update', batch_size=None, throttle_rows_per_second=None)
             
             assert result['successful'] == 1
             assert result['failed'] == 0
@@ -323,7 +336,9 @@ class TestInsertBatch:
                 df,
                 timeframe='1h',
                 data_source='custom_source',
-                on_conflict='update'
+                on_conflict='update',
+                batch_size=None,
+                throttle_rows_per_second=None
             )
             
             # Verify the dataframe was modified to add metadata
@@ -348,7 +363,7 @@ class TestInsertBatch:
             return_value={'successful': 4, 'failed': failed_rows}
         )
         
-        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
+        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update', batch_size=None, throttle_rows_per_second=None)
         
         failed_detail = result['failed_details'][0]
         assert failed_detail['original_index'] == 2
@@ -480,7 +495,7 @@ class TestGetLastTimestamp:
         
         # Verify query parameters
         call_args = market_data_client._execute_with_retry.call_args
-        assert call_args[0][1] == ('AAPL', '1d', 'polygon_s3')
+        assert call_args.kwargs['params'] == ('AAPL', '1d', 'polygon_s3')
     
     def test_get_last_timestamp_no_data(self, market_data_client):
         """Test returning None when no data exists."""
@@ -506,7 +521,7 @@ class TestGetLastTimestamp:
         
         # Verify correct source was queried
         call_args = market_data_client._execute_with_retry.call_args
-        assert call_args[0][1][2] == 'yahoo'
+        assert call_args.kwargs['params'][2] == 'yahoo'
     
     def test_get_last_timestamp_multiple_timeframes(self, market_data_client):
         """Test filtering correctly by timeframe."""
@@ -522,7 +537,7 @@ class TestGetLastTimestamp:
         
         # Verify correct timeframe was queried
         call_args = market_data_client._execute_with_retry.call_args
-        assert call_args[0][1][1] == '5m'
+        assert call_args.kwargs['params'][1] == '5m'
 
 
 @pytest.mark.unit
@@ -589,7 +604,7 @@ class TestGetDataGaps:
         )
         
         # Verify query excluded weekends
-        query_call = market_data_client._execute_with_retry.call_args[0][0]
+        query_call = market_data_client._execute_with_retry.call_args.args[0]
         assert 'EXTRACT(DOW FROM d.expected_date) NOT IN (0, 6)' in query_call
     
     def test_get_data_gaps_empty_table(self, market_data_client):
@@ -630,7 +645,7 @@ class TestGetDataGaps:
         
         # Verify timeframe filter was applied
         call_args = market_data_client._execute_with_retry.call_args
-        assert call_args[0][1][3] == '5m'
+        assert call_args.kwargs['params'][3] == '5m'
 
 
 @pytest.mark.unit
@@ -830,7 +845,7 @@ class TestGetDataSummary:
         mock_context_manager.__exit__ = Mock(return_value=False)
         market_data_client._get_connection = Mock(return_value=mock_context_manager)
         
-        result = market_data_client.get_data_summary()
+        result = market_data_client.get_data_summary(start_date=None, end_date=None)
         
         assert len(result) == 2
         assert result.iloc[0]['ticker'] == 'AAPL'
@@ -908,7 +923,7 @@ class TestErrorHandling:
             mock_prepare.side_effect = ValueError("Invalid data types")
             
             with pytest.raises(ValueError, match="Invalid data types"):
-                market_data_client.insert_batch(invalid_df, timeframe='1d', data_source='polygon_s3', on_conflict='update')
+                market_data_client.insert_batch(invalid_df, timeframe='1d', data_source='polygon_s3', on_conflict='update', batch_size=None, throttle_rows_per_second=None)
     
     def test_constraint_violations(self, market_data_client, sample_dataframe):
         """Test handling of database constraint violations."""
@@ -945,7 +960,9 @@ class TestErrorHandling:
             sample_dataframe,
             timeframe='1d',
             data_source='polygon_s3',
-            on_conflict='error'  # No conflict handling
+            on_conflict='error',  # No conflict handling
+            batch_size=None,
+            throttle_rows_per_second=None
         )
         
         assert result['successful'] == 3
@@ -1019,7 +1036,7 @@ class TestMetrics:
         )
         
         with caplog.at_level(logging.INFO):
-            result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
+            result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update', batch_size=None, throttle_rows_per_second=None)
         
         # Check for expected log messages
         log_messages = [record.message for record in caplog.records]
@@ -1040,7 +1057,7 @@ class TestMetrics:
         )
         
         # Perform operation
-        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update')
+        result = market_data_client.insert_batch(sample_dataframe, timeframe='1d', data_source='polygon_s3', on_conflict='update', batch_size=None, throttle_rows_per_second=None)
         
         # Performance metrics should be in result
         assert 'duration_seconds' in result

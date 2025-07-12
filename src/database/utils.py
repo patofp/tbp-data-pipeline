@@ -102,8 +102,8 @@ def verify_timescaledb_extension(conn: Connection) -> bool:
 def build_insert_query(
     table_name: str,
     columns: List[str],
-    on_conflict: Optional[Dict[str, Any]] = None,
-    returning: Optional[List[str]] = None
+    on_conflict: Optional[Dict[str, Any]],
+    returning: Optional[List[str]]
 ) -> str:
     """
     Build INSERT query with optional ON CONFLICT and RETURNING clauses.
@@ -163,7 +163,7 @@ def build_multi_insert_query(
     table_name: str,
     columns: List[str],
     row_count: int,
-    on_conflict: Optional[Dict[str, Any]] = None
+    on_conflict: Optional[Dict[str, Any]]
 ) -> str:
     """
     Build multi-row INSERT query for batch operations.
@@ -309,7 +309,7 @@ def prepare_dataframe_for_insert(
     return result
 
 
-def estimate_batch_size(timeframe: str, operation: str = 'insert') -> int:
+def estimate_batch_size(timeframe: str, operation: str) -> int:
     """
     Estimate optimal batch size based on timeframe and operation.
     
@@ -465,7 +465,7 @@ def validate_dataframe_schema(
     return is_valid, errors
 
 
-def get_table_size_stats(conn: Connection, schema: str = 'trading') -> pd.DataFrame:
+def get_table_size_stats(conn: Connection, schema: str) -> pd.DataFrame:
     """
     Get size statistics for all tables in schema.
     
@@ -496,7 +496,7 @@ def get_table_size_stats(conn: Connection, schema: str = 'trading') -> pd.DataFr
 def calculate_insert_throttle(
     rows_per_second: float,
     batch_size: int,
-    current_rate: Optional[float] = None
+    current_rate: Optional[float]
 ) -> float:
     """
     Calculate sleep time to throttle insert rate.

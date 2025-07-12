@@ -44,8 +44,8 @@ class MarketDataClient(BaseDBClient):
         timeframe: str,
         data_source: str,
         on_conflict: str,
-        batch_size: Optional[int] = None,
-        throttle_rows_per_second: Optional[float] = None
+        batch_size: Optional[int],
+        throttle_rows_per_second: Optional[float]
     ) -> Dict[str, Any]:
         """
         Insert batch of market data with detailed error tracking.
@@ -134,7 +134,8 @@ class MarketDataClient(BaseDBClient):
             if throttle_rows_per_second and batch_start > 0:
                 sleep_time = calculate_insert_throttle(
                     throttle_rows_per_second,
-                    len(batch_tuples)
+                    len(batch_tuples),
+                    current_rate=None
                 )
                 time.sleep(sleep_time)
             
@@ -212,7 +213,8 @@ class MarketDataClient(BaseDBClient):
                 
                 self._execute_with_retry(
                     query,
-                    tuple(flat_params),
+                    params=tuple(flat_params),
+                    max_retries=3,
                     fetch=False,
                     commit=True
                 )
@@ -232,7 +234,8 @@ class MarketDataClient(BaseDBClient):
         query = build_insert_query(
             self.table_name,
             columns,
-            on_conflict=conflict_config
+            on_conflict=conflict_config,
+            returning=None
         )
         
         successful = 0
@@ -242,10 +245,10 @@ class MarketDataClient(BaseDBClient):
             try:
                 self._execute_with_retry(
                     query,
-                    row_tuple,
+                    params=row_tuple,
+                    max_retries=1,  # Less retries for individual rows
                     fetch=False,
-                    commit=True,
-                    max_retries=1  # Less retries for individual rows
+                    commit=True
                 )
                 successful += 1
                 
@@ -293,7 +296,10 @@ class MarketDataClient(BaseDBClient):
         try:
             result = self._execute_with_retry(
                 query,
-                (ticker, timeframe, data_source)
+                params=(ticker, timeframe, data_source),
+                max_retries=3,
+                fetch=True,
+                commit=False
             )
             
             if result and result[0][0]:
@@ -362,8 +368,11 @@ class MarketDataClient(BaseDBClient):
         try:
             result = self._execute_with_retry(
                 query,
-                (start_date, end_date, ticker, timeframe, 
-                 data_source, start_date, end_date)
+                params=(start_date, end_date, ticker, timeframe, 
+                        data_source, start_date, end_date),
+                max_retries=3,
+                fetch=True,
+                commit=False
             )
             
             gaps = [row[0] for row in result]
@@ -405,7 +414,7 @@ class MarketDataClient(BaseDBClient):
         """
         
         try:
-            result = self._execute_with_retry(query, (ticker,))
+            result = self._execute_with_retry(query, params=(ticker,), max_retries=3, fetch=True, commit=False)
             
             if result and result[0][0]:
                 row = result[0]
@@ -476,7 +485,10 @@ class MarketDataClient(BaseDBClient):
         try:
             result = self._execute_with_retry(
                 count_query,
-                (ticker, start_date, end_date, timeframe, data_source)
+                params=(ticker, start_date, end_date, timeframe, data_source),
+                max_retries=3,
+                fetch=True,
+                commit=False
             )
             
             row_count = result[0][0] if result else 0
@@ -504,7 +516,8 @@ class MarketDataClient(BaseDBClient):
             
             self._execute_with_retry(
                 delete_query,
-                (ticker, start_date, end_date, timeframe, data_source),
+                params=(ticker, start_date, end_date, timeframe, data_source),
+                max_retries=3,
                 fetch=False,
                 commit=True
             )
@@ -524,8 +537,8 @@ class MarketDataClient(BaseDBClient):
     
     def get_data_summary(
         self, 
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        start_date: Optional[date],
+        end_date: Optional[date]
     ) -> pd.DataFrame:
         """
         Get summary of all data in the database.

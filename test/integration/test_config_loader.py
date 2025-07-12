@@ -36,7 +36,7 @@ class TestConfigLoaderFileSystem:
                 m.setenv('DB_USER', 'test_user')
                 m.setenv('DB_PASSWORD', 'test_pass')
                 
-                config = ConfigLoader()
+                config = ConfigLoader("config")
                 
                 # Test that we can load tickers if config file exists
                 if (project_root / 'config' / 'instruments.yml').exists():
@@ -61,7 +61,7 @@ class TestConfigLoaderFileSystem:
                 
                 # Should fail fast when config directory doesn't exist
                 with pytest.raises(FileNotFoundError, match="Configuration directory .* not found"):
-                    ConfigLoader()
+                    ConfigLoader("config")
                     
             finally:
                 os.chdir(original_cwd)
@@ -90,7 +90,7 @@ class TestConfigLoaderEnvironmentIntegration:
                 m.setenv('DB_USER', 'test_user')
                 m.setenv('DB_PASSWORD', 'test_pass')
                 
-                config = ConfigLoader()
+                config = ConfigLoader("config")
                 
                 # Verify environment variable substitution works in YAML files
                 s3_config = config.get_s3_config()

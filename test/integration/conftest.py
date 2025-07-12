@@ -156,7 +156,7 @@ def test_s3_config(localstack_s3):
     original_cwd = os.getcwd()
     try:
         os.chdir(Path(__file__).parent.parent.parent)  # Go to project root
-        config_loader = ConfigLoader()
+        config_loader = ConfigLoader("config")
         
         # Validate environment
         if not config_loader.validate_environment():
